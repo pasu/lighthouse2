@@ -34,7 +34,7 @@ __global__ void finalizeRenderKernel( const float4* accumulator, const int scrwi
 	float r = sqrtf( max( 0.0f, (value.x - 0.5f) * contrastFactor + 0.5f + brightness ) );
 	float g = sqrtf( max( 0.0f, (value.y - 0.5f) * contrastFactor + 0.5f + brightness ) );
 	float b = sqrtf( max( 0.0f, (value.z - 0.5f) * contrastFactor + 0.5f + brightness ) );
-	surf2Dwrite<float4>( make_float4( r, g, b, value.w ), renderTarget, x * sizeof( float4 ), y, cudaBoundaryModeClamp );
+	surf2Dwrite<float4>( make_float4( 1.0f, 0.0f, 0.0f, 1.0f ), renderTarget, x * sizeof( float4 ), y, cudaBoundaryModeClamp );
 }
 __host__ void finalizeRender( const float4* accumulator, const int w, const int h, const int spp, const float brightness, const float contrast )
 {
