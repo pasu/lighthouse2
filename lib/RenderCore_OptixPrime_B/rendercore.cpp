@@ -61,6 +61,14 @@ void generateEyeRays( int pathCount, Ray4* rayBuffer, float4* extensionRayExBuff
 	const float lensSize, const float3 camPos, const float3 right, const float3 up, const float3 p1,
 	const int4 screenParams );
 
+// BDPT
+////////////////////////////////////////
+void InitIndexForConstructionLight(int pathCount, uint* constructLightBuffer);
+void constructionLightPos(int pathCount, float NKK, uint* constructLightBuffer, float4* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams);
+//void ExtendPath(int pathCount, float4* pathStateBuffer);
+//void ConnectionPath(int pathCount, float4* pathStateBuffer);
+//////////////////////////////////////////
+
 } // namespace lh2core
 
 using namespace lh2core;
@@ -175,6 +183,14 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 			rtpBufferDescDestroy( extensionHitsDesc );
 			rtpBufferDescDestroy( shadowRaysDesc );
 			rtpBufferDescDestroy( shadowHitsDesc );
+
+            //BDPT
+            //////////////////////////
+            rtpBufferDescDestroy(visibilityRaysDesc);
+            rtpBufferDescDestroy(visibilityHitsDesc);
+            rtpBufferDescDestroy(randomWalkRaysDesc);
+            rtpBufferDescDestroy(randomWalkHitsDesc);
+            /////////////////////////
 		}
 		// delete CoreBuffers
 		delete extensionRayBuffer[0];
@@ -186,6 +202,16 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		delete shadowRayPotential;
 		delete shadowHitBuffer;
 		delete accumulator;
+        // BDPT
+        /////////////////////////////
+        delete constructLightBuffer;
+        delete pathStateBuffer;
+        delete visibilityRayBuffer;
+        delete visibilityHitBuffer;
+        delete randomWalkRayBuffer;
+        delete randomWalkHitBuffer;
+        /////////////////////////////
+
 		const uint maxShadowRays = maxPixels * spp * MAXPATHLENGTH; // upper limit; safe but wasteful
 		extensionHitBuffer = new CoreBuffer<Intersection>( maxPixels * spp, ON_DEVICE );
 		shadowRayBuffer = new CoreBuffer<Ray4>( maxShadowRays, ON_DEVICE );
@@ -201,6 +227,21 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_HIT_T_TRIID_INSTID_U_V, RTP_BUFFER_TYPE_CUDA_LINEAR, extensionHitBuffer->DevPtr(), &extensionHitsDesc ) );
 		CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, shadowRayBuffer->DevPtr(), &shadowRaysDesc ) );
 		CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_HIT_BITMASK, RTP_BUFFER_TYPE_CUDA_LINEAR, shadowHitBuffer->DevPtr(), &shadowHitsDesc ) );
+        
+        // BDPT
+        ///////////////////////////////////////////
+        constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
+        pathStateBuffer = new CoreBuffer<float4>(maxPixels * 3 * spp, ON_DEVICE);
+        
+        visibilityRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
+        CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityRayBuffer->DevPtr(), &visibilityRaysDesc));
+        visibilityHitBuffer = new CoreBuffer<uint>((maxPixels * spp + 31) >> 5, ON_DEVICE);
+        CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_BITMASK, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityHitBuffer->DevPtr(), &visibilityHitsDesc));
+        randomWalkRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
+        CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkRayBuffer->DevPtr(), &randomWalkRaysDesc));
+        randomWalkHitBuffer = new CoreBuffer<Intersection>(maxPixels * spp, ON_DEVICE);
+        CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_T_TRIID_INSTID_U_V, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkHitBuffer->DevPtr(), &randomWalkHitsDesc));
+        //////////////////////////////////////////
 		printf( "buffers resized for %i pixels @ %i samples.\n", maxPixels, spp );
 	}
 	// clear the accumulator
@@ -447,6 +488,19 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 		samplesTaken = 0;
 		camRNGseed = 0x12345678; // same seed means same noise.
 	}
+
+    // BDPT
+    ///////////////////////////////////
+    static bool bInit = false;
+    static float NKK = 3;
+    if (!bInit)
+    {
+        InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
+        bInit = true;
+    }    
+    //         constructLightBuffer->CopyToHost();
+    //         uint* indexV = constructLightBuffer->HostPtr();
+    //////////////////////////////////////
 	// update instance descriptor array on device
 	// Note: we are not using the built-in OptiX instance system for shading. Instead,
 	// we figure out which triangle we hit, and to what instance it belongs; from there,
@@ -477,7 +531,51 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 		instDescBuffer->CopyToDevice();
 		// instancesDirty = false;
 	}
+
+    uint pathCount = scrwidth * scrheight * scrspp;
+    uint lightCount = pathCount;
 	// render image
+    RTPquery queryVisibility,queryRandomWalk;
+    CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
+    CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
+    for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
+    {
+           constructionLightPos(lightCount, NKK, constructLightBuffer->DevPtr(), pathStateBuffer->DevPtr(), RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams());
+
+           pathStateBuffer->CopyToHost();
+           float4* v = pathStateBuffer->HostPtr();
+           int a = 100;
+
+           InitCountersForExtend(0);
+
+//         ExtendPath(pathCount, pathStateBuffer->DevPtr());
+// 
+//         CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
+//         CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
+//         CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
+//         CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
+//         CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
+// 
+//         CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, pathCount));
+//         CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, pathCount));
+//         CHK_PRIME(rtpQuerySetRays(queryVisibility, randomWalkRaysDesc));
+//         CHK_PRIME(rtpQuerySetHits(queryVisibility, randomWalkHitsDesc));
+//         CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
+// 
+//         ConnectionPath(pathCount, pathStateBuffer->DevPtr());
+
+           counterBuffer->CopyToHost();
+           Counters& counters = counterBuffer->HostPtr()[0];
+
+           lightCount = counters.activePaths;
+    }
+    CHK_PRIME(rtpQueryDestroy(queryVisibility));
+    CHK_PRIME(rtpQueryDestroy(queryRandomWalk));
+
+    renderTarget.BindSurface();
+    finalizeRender(accumulator->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
+    renderTarget.UnbindSurface();
+    /*
 	coreStats.totalExtensionRays = 0;
 	// setup primary rays
 	float3 right = view.p2 - view.p1, up = view.p3 - view.p1;
@@ -559,6 +657,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 	coreStats.probedInstid = counters.probedInstid;
 	coreStats.probedTriid = counters.probedTriid;
 	coreStats.probedDist = counters.probedDist;
+    */
 }
 
 //  +-----------------------------------------------------------------------------+

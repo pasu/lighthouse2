@@ -91,20 +91,43 @@ private:
 	CoreBuffer<uint>* normal32Buffer = 0;			// texel buffer 2: integer-encoded normals
 	CoreBuffer<float3>* skyPixelBuffer = 0;			// skydome texture data
 	RTPmodel* topLevel = 0;							// the top-level node; combines all instances and is the entry point for ray queries
-	CoreBuffer<float4>* accumulator = 0;			// accumulator buffer for the path tracer
+    CoreBuffer<CoreInstanceDesc>* instDescBuffer = 0; // instance descriptor array
+    CoreBuffer<uint>* texel32Buffer = 0;			// texel buffer 0: regular ARGB32 texture data
+
+    CoreBuffer<float4>* accumulator = 0;			// accumulator buffer for the path tracer
 	CoreBuffer<Counters>* counterBuffer = 0;		// counters for persistent threads
-	CoreBuffer<CoreInstanceDesc>* instDescBuffer = 0; // instance descriptor array
-	CoreBuffer<uint>* texel32Buffer = 0;			// texel buffer 0: regular ARGB32 texture data
+
+    // BDPT
+    ///////////////////////////
+    CoreBuffer<uint>* constructLightBuffer = 0; // buffer for OptiX intersection results
+
+    CoreBuffer<float4>* pathStateBuffer = 0;	// additional path state data
+
+    CoreBuffer<Ray4>* visibilityRayBuffer = 0;         // buffer for visibility of connection
+    CoreBuffer<uint>* visibilityHitBuffer = 0; // buffer for OptiX intersection results
+    RTPbufferdesc visibilityRaysDesc;				// buffer descriptor for extension rays
+    RTPbufferdesc visibilityHitsDesc;				// buffer descriptor for extension ray hits
+
+    CoreBuffer<Ray4>* randomWalkRayBuffer = 0;         // buffer for visibility of connection
+    CoreBuffer<Intersection>* randomWalkHitBuffer = 0; // buffer for OptiX intersection results
+    RTPbufferdesc randomWalkRaysDesc;				// buffer descriptor for extension rays
+    RTPbufferdesc randomWalkHitsDesc;				// buffer descriptor for extension ray hits
+    ///////////////////////////////
+	
+    CoreBuffer<float4>* extensionRayExBuffer[2] = { 0, 0 };	// additional path state data
+
 	CoreBuffer<Ray4>* extensionRayBuffer[2] = { 0, 0 }; // buffer for OptiX extension ray data
-	CoreBuffer<float4>* extensionRayExBuffer[2] = { 0, 0 };	// additional path state data
 	CoreBuffer<Intersection>* extensionHitBuffer = 0; // buffer for OptiX intersection results
+    RTPbufferdesc extensionRaysDesc[2];				// buffer descriptor for extension rays
+    RTPbufferdesc extensionHitsDesc;				// buffer descriptor for extension ray hits
+
 	CoreBuffer<Ray4>* shadowRayBuffer = 0;			// buffer for OptiX shadow ray data
+    CoreBuffer<uint>* shadowHitBuffer = 0;			// buffer for OptiX intersection results, 1 bit per shadow ray
+    RTPbufferdesc shadowRaysDesc;					// buffer descriptor for shadow rays
+    RTPbufferdesc shadowHitsDesc;					// buffer descriptor for shadow ray hits
+
 	CoreBuffer<float4>* shadowRayPotential = 0;		// potential throughput for shadow rays
-	CoreBuffer<uint>* shadowHitBuffer = 0;			// buffer for OptiX intersection results, 1 bit per shadow ray
-	RTPbufferdesc extensionRaysDesc[2];				// buffer descriptor for extension rays
-	RTPbufferdesc extensionHitsDesc;				// buffer descriptor for extension ray hits
-	RTPbufferdesc shadowRaysDesc;					// buffer descriptor for shadow rays
-	RTPbufferdesc shadowHitsDesc;					// buffer descriptor for shadow ray hits
+
 	CoreTexDesc* texDescs = 0;						// array of texture descriptors
 	int textureCount = 0;							// size of texture descriptor array
 	int SMcount = 0;								// multiprocessor count, used for persistent threads

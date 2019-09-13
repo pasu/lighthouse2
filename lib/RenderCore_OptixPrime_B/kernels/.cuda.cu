@@ -60,6 +60,21 @@ __host__ void SetDebugData( float4* p ) { cudaMemcpyToSymbol( debugData, &p, siz
 __host__ void SetGeometryEpsilon( float e ) { cudaMemcpyToSymbol( geometryEpsilon, &e, sizeof( float ) ); }
 __host__ void SetClampValue( float c ) { cudaMemcpyToSymbol( clampValue, &c, sizeof( float ) ); }
 
+// BDPT
+/////////////////////////////////////////////////
+__global__ void InitIndexForConstructionLight_Kernel(int pathCount, uint* construcLightBuffer)
+{
+    int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
+    if (jobIndex >= pathCount) return;
+
+    construcLightBuffer[jobIndex] = jobIndex;
+}
+__host__ void InitIndexForConstructionLight(int pathCount, uint* construcLightBuffer)
+{ 
+    const dim3 gridDim(NEXTMULTIPLEOF(pathCount, 256) / 256, 1), blockDim(256, 1);
+    InitIndexForConstructionLight_Kernel << <gridDim.x, 256 >> > (pathCount, construcLightBuffer);
+}
+///////////////////////////////////////////////////
 // counters for persistent threads
 static __device__ Counters* counters;
 __global__ void InitCountersForExtend_Kernel( int pathCount )
@@ -92,7 +107,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "..\..\CUDA\shared_kernel_code\finalize_shared.cu"
 #include "camera.cu"
 #include "connections.cu"
-
+#include "constructionLightPos.cu"
 } // namespace lh2core
 
 // EOF
