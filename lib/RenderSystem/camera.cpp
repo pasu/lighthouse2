@@ -96,12 +96,15 @@ ViewPyramid Camera::GetView()
 	view.p3 = C - screenSize * right * focalDistance * aspectRatio - screenSize * focalDistance * up;
 	view.aperture = aperture;
 
-//     float3 w = view.p1 - view.p2;
-//     float w1 = w.x*w.x + w.y*w.y + w.z*w.z;
-//     float3 h = view.p1 - view.p3;
-//     float h1 = h.x*h.x + h.y*h.y + h.z*h.z;
-//     float3 p = view.p2 - view.p3;
-//     float p1 = p.x*p.x + p.y*p.y + p.z*p.z;
+// BDPT
+    float3 unitP1 = C - screenSize * right * aspectRatio + screenSize * up;
+    float3 unitP2 = C + screenSize * right * aspectRatio + screenSize * up;
+    float3 unitP3 = C - screenSize * right * aspectRatio - screenSize * up;
+//     float3 w = unitP1 - unitP2;
+//     float3 h = unitP1 - unitP3;
+
+    view.imagePlane = length(unitP1 - unitP2) * length(unitP1 - unitP3);
+
 	return view;
 }
 

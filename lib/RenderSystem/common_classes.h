@@ -379,6 +379,7 @@ struct ViewPyramid
 	float3 p3;
 	float aperture;
 	float spreadAngle;
+    float imagePlane;
 #else
 	float3 pos = make_float3( 0 );
 	float3 p1 = make_float3( -1, -1, -1 );
@@ -386,6 +387,7 @@ struct ViewPyramid
 	float3 p3 = make_float3( -1, 1, -1 );
 	float aperture = 0;
 	float spreadAngle = 0.01f; // spread angle of center pixel
+    float imagePlane = 0.01f;
 #endif
 };
 
