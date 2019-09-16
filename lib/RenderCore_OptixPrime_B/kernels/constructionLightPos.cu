@@ -25,7 +25,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     Ray4* randomWalkRays)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
-    if (gid >= smcount) return;
+    if (gid >= counters->activePaths) return;
 
     int jobIndex = constructLightBuffer[gid];
 
@@ -34,7 +34,12 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
 
-    uint sampleIdx = pathStateData[jobIndex].pathInfo.w;
+    uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
+
+    uint s = 0;
+    uint t = 1;
+    uint type = 0;
+    uint sampleIdx = path_s_t_type_pass & 255;
 
     float r0,r1,r2,r3;
 
@@ -76,13 +81,10 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     pathStateData[jobIndex].data3 = make_float4(lightDir, __int_as_float(randomWalkRayIdx));
     pathStateData[jobIndex].light_normal = make_float4(normal, 0.0f);
 
-    uint s = 0;
-    uint t = 1;
-    uint type = 0;
-    sampleIdx = 1;
-    uint path_s_t_type_pass = (s << 24) + (t<<16) + (type<<8) + sampleIdx;
+    sampleIdx++;
+    path_s_t_type_pass = (s << 24) + (t<<16) + (type<<8) + sampleIdx;
 
-    pathStateData[jobIndex].pathInfo.x = path_s_t_type_pass;
+    pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 }
 
 //  +-----------------------------------------------------------------------------+

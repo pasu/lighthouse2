@@ -111,6 +111,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "connections.cu"
 #include "constructionLightPos.cu"
 #include "extendPath.cu"
+#include "connectionPath.cu"
 } // namespace lh2core
 
 // EOF

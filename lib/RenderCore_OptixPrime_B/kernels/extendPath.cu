@@ -37,12 +37,8 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
 
     uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
 
-    uint pass = path_s_t_type_pass & 255;
-    uint type = path_s_t_type_pass >> 8;
-    uint t = type >> 8;
-    uint s = t >> 8;
-    type = type & 255;
-    t = t & 255;
+    uint pass, type, t, s;
+    getPathInfo(path_s_t_type_pass, pass, s, t, type);
 
     const int scrhsize = screenParams.x & 0xffff;
     const int scrvsize = screenParams.x >> 16;
@@ -51,7 +47,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     const uint sampleIndex = pass + y / scrvsize;
     y %= scrvsize;
 
-    if (type & 0x1 == 0)
+    if((type & 0x1) == 0)
     {
         // get random numbers
         float3 posOnPixel, posOnLens;
@@ -99,7 +95,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         float d, pdf_area, pdf_solidangle;
         float3 throughput, beta;
 
-        if (type == 1)
+        if (type == 0x01) // extend eye path
         {
             throughput = make_float3(pathStateData[jobIndex].data4);
             beta = make_float3(pathStateData[jobIndex].data5);
@@ -112,7 +108,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
 
             hitData = pathStateData[jobIndex].eye_intersection;
         }
-        else if (type == 2)
+        else if (type == 0x10) // extend light path
         {
             throughput = make_float3(pathStateData[jobIndex].data0);
             beta = make_float3(pathStateData[jobIndex].data1);
@@ -159,7 +155,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         beta *= bsdf * dot(fN, R) / pdf_solidangle;
 
         const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
-        randomWalkRays[randomWalkRayIdx].O4 = make_float4(I, EPSILON);
+        randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
         randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
 
         if (type == 1) // eye path
@@ -210,15 +206,15 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     }
 
     path_s_t_type_pass = (s << 24) + (t << 16) + (type << 8) + pass;
-    pathStateData[jobIndex].pathInfo.x = path_s_t_type_pass;
+    pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
     float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
-    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
+    float3 eye2light = normalize(make_float3(pathStateData[jobIndex].data2) - eye_pos);
     float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
-    const float dist = length(eye_pos - light_pos);
+    const float dist = length(eye_pos - eye2light);
 
-    visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, light_pos, eye_normal, geometryEpsilon), 0);
-    visibilityRays[jobIndex].D4 = make_float4(light_pos, dist - 2 * geometryEpsilon);
+    visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
+    visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
 }
 
 //  +-----------------------------------------------------------------------------+
