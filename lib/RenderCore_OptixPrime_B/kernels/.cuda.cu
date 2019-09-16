@@ -81,6 +81,8 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
 {
 	if (threadIdx.x != 0) return;
 	counters->activePaths = pathCount;	// remaining active paths
+    counters->randomWalkRays = 0;
+    counters->visibilityRays = 0;
 	counters->extensionRays = 0;		// compaction counter for extension rays
 	counters->shadowRays = 0;			// compaction counter for connections
 	counters->totalExtensionRays = pathCount;
@@ -108,6 +110,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "camera.cu"
 #include "connections.cu"
 #include "constructionLightPos.cu"
+#include "extendPath.cu"
 } // namespace lh2core
 
 // EOF

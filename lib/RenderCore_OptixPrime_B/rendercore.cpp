@@ -64,8 +64,14 @@ void generateEyeRays( int pathCount, Ray4* rayBuffer, float4* extensionRayExBuff
 // BDPT
 ////////////////////////////////////////
 void InitIndexForConstructionLight(int pathCount, uint* constructLightBuffer);
-void constructionLightPos(int pathCount, float NKK, uint* constructLightBuffer, float4* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams);
-//void ExtendPath(int pathCount, float4* pathStateBuffer);
+void constructionLightPos(int pathCount, float NKK, uint* constructLightBuffer, 
+    BiPathState* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams,
+    Ray4* randomWalkRays);
+void extendPath(int pathCount, BiPathState* pathStateBuffer,
+    Ray4* visibilityRays, Ray4* randomWalkRays,
+    const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
+    const float3 right, const float3 up, const float3 forward, const float3 p1, const float spreadAngle,
+    const int4 screenParams);
 //void ConnectionPath(int pathCount, float4* pathStateBuffer);
 //////////////////////////////////////////
 
@@ -205,7 +211,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         // BDPT
         /////////////////////////////
         delete constructLightBuffer;
-        delete pathStateBuffer;
+        delete pathDataBuffer;
         delete visibilityRayBuffer;
         delete visibilityHitBuffer;
         delete randomWalkRayBuffer;
@@ -231,15 +237,15 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         // BDPT
         ///////////////////////////////////////////
         constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
-        pathStateBuffer = new CoreBuffer<float4>(maxPixels * 3 * spp, ON_DEVICE);
+        pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
         
         visibilityRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityRayBuffer->DevPtr(), &visibilityRaysDesc));
         visibilityHitBuffer = new CoreBuffer<uint>((maxPixels * spp + 31) >> 5, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_BITMASK, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityHitBuffer->DevPtr(), &visibilityHitsDesc));
-        randomWalkRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
+        randomWalkRayBuffer = new CoreBuffer<Ray4>(maxPixels * 2 * spp, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkRayBuffer->DevPtr(), &randomWalkRaysDesc));
-        randomWalkHitBuffer = new CoreBuffer<Intersection>(maxPixels * spp, ON_DEVICE);
+        randomWalkHitBuffer = new CoreBuffer<Intersection>(maxPixels * 2 * spp, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_T_TRIID_INSTID_U_V, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkHitBuffer->DevPtr(), &randomWalkHitsDesc));
         //////////////////////////////////////////
 		printf( "buffers resized for %i pixels @ %i samples.\n", maxPixels, spp );
@@ -534,22 +540,31 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
     uint pathCount = scrwidth * scrheight * scrspp;
     uint lightCount = pathCount;
+    float3 right = view.p2 - view.p1, up = view.p3 - view.p1;
+    float3 forward = cross(right, up);
 	// render image
     RTPquery queryVisibility,queryRandomWalk;
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
     for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
     {
-           constructionLightPos(lightCount, NKK, constructLightBuffer->DevPtr(), pathStateBuffer->DevPtr(), RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams());
+           constructionLightPos(lightCount, NKK, 
+               constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
+               RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
+               randomWalkRayBuffer->DevPtr());
 
-           pathStateBuffer->CopyToHost();
-           float4* v = pathStateBuffer->HostPtr();
-           int a = 100;
+           //InitCountersForExtend(0);
 
-           InitCountersForExtend(0);
+           extendPath(pathCount, pathDataBuffer->DevPtr(),
+               visibilityRayBuffer->DevPtr(),randomWalkRayBuffer->DevPtr(),
+               RandomUInt(camRNGseed), blueNoise->DevPtr(),
+               view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
 
-//         ExtendPath(pathCount, pathStateBuffer->DevPtr());
-// 
+           pathDataBuffer->CopyToHost();
+           BiPathState* v = pathDataBuffer->HostPtr();
+           int* f1 = (int*)(&v[0].data4.x);
+           int* f21 = (int*)(&v[0].data4.w);
+
 //         CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
 //         CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
 //         CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));

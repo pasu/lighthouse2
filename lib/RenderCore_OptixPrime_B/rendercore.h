@@ -101,7 +101,7 @@ private:
     ///////////////////////////
     CoreBuffer<uint>* constructLightBuffer = 0; // buffer for OptiX intersection results
 
-    CoreBuffer<float4>* pathStateBuffer = 0;	// additional path state data
+    CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
 
     CoreBuffer<Ray4>* visibilityRayBuffer = 0;         // buffer for visibility of connection
     CoreBuffer<uint>* visibilityHitBuffer = 0; // buffer for OptiX intersection results

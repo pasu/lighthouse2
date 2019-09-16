@@ -20,7 +20,9 @@
 //  |  Generate primary rays, to be traced by Optix Prime.                  LH2'19|
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
-void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, float4* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams)
+void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, 
+    BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
+    Ray4* randomWalkRays)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= smcount) return;
@@ -32,9 +34,9 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
 
-    const uint sampleIdx = __float_as_int(pathStateData[jobIndex].y);
+    uint sampleIdx = pathStateData[jobIndex].pathInfo.w;
 
-    float r0, r1,r2,r3;
+    float r0,r1,r2,r3;
 
     if (sampleIdx < 256)
     {
@@ -60,23 +62,39 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
     float3 beta = throughput * dot(normal, lightDir) / (lightPdf * pdfPos * pdfDir);
 
-    float vertex_l_probability = lightPdf * pdfPos;
-    float dL = NKK / vertex_l_probability;
-    float vertex_l_solidangle = pdfDir;
+    float light_p = lightPdf * pdfPos;
+    float dL = NKK / light_p;
+    float light_pdf_solid = pdfDir;
 
-    pathStateData[jobIndex * 3] = make_float4(throughput, dL);
-    pathStateData[jobIndex * 3 + 1] = make_float4(beta, vertex_l_probability);
-    pathStateData[jobIndex * 3 + 2] = make_float4(pos, vertex_l_solidangle);
+    const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
+    randomWalkRays[randomWalkRayIdx].O4 = make_float4(pos, EPSILON);
+    randomWalkRays[randomWalkRayIdx].D4 = make_float4(lightDir, 1e34f);
+
+    pathStateData[jobIndex].data0 = make_float4(throughput, dL);
+    pathStateData[jobIndex].data1 = make_float4(beta, light_p);
+    pathStateData[jobIndex].data2 = make_float4(pos, light_pdf_solid);
+    pathStateData[jobIndex].data3 = make_float4(lightDir, __int_as_float(randomWalkRayIdx));
+    pathStateData[jobIndex].light_normal = make_float4(normal, 0.0f);
+
+    uint s = 0;
+    uint t = 1;
+    uint type = 0;
+    sampleIdx = 1;
+    uint path_s_t_type_pass = (s << 24) + (t<<16) + (type<<8) + sampleIdx;
+
+    pathStateData[jobIndex].pathInfo.x = path_s_t_type_pass;
 }
 
 //  +-----------------------------------------------------------------------------+
 //  |  constructionLightPos                                                            |
 //  |  Entry point for the persistent constructionLightPos kernel.               LH2'19|
 //  +-----------------------------------------------------------------------------+
-__host__ void constructionLightPos( int smcount, float NKK, uint* constructLightBuffer, float4* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams)
+__host__ void constructionLightPos( int smcount, float NKK, uint* constructLightBuffer, 
+    BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
+    Ray4* randomWalkRays)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, pathStateData, R0, blueNoise, screenParams);
+    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, pathStateData, R0, blueNoise, screenParams, randomWalkRays);
 }
 
 // EOF

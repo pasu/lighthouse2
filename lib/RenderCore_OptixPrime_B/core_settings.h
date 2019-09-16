@@ -83,10 +83,33 @@ struct PathState
 };
 struct PathState4 { float4 O4, D4, T4; };
 
+struct BiPathState
+{
+    // light vertex
+    float4 data0; // light_throughput light_dL
+    float4 data1; // light_beta light_p
+    float4 data2; // light_pos light_pdf_solid
+    float4 data3; // light_dir queryId
+
+    // eye vertex
+    float4 data4; // eye_throughput eye_dL
+    float4 data5; // eye_beta eye_p
+    float4 data6; // eye_pos eye_pdf_solid
+    float4 data7; // eye_dir queryId
+    
+    float4 light_intersection;
+    float4 eye_intersection;
+    uint4 pathInfo; // s_t_type_pass
+    float4 light_normal;
+    float4 eye_normal;
+};
+
 // counters and other global data, in device memory
 struct Counters
 {
 	uint activePaths;
+    uint visibilityRays;
+    uint randomWalkRays;
 	uint extensionRays;
 	uint shadowRays;
 	uint totalExtensionRays;
