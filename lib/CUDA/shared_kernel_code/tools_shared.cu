@@ -307,4 +307,14 @@ LH2_DEVFUNC float blueNoiseSampler( const uint* blueNoise, int x, int y, int sam
 	return (0.5f + value) * (1.0f / 256.0f);
 }
 
+LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s, uint& t, uint& type)
+{
+    pass = path_s_t_type_pass & 255;
+    type = path_s_t_type_pass >> 8;
+    t = type >> 8;
+    s = t >> 8;
+    type = type & 255;
+    t = t & 255;
+}
+
 // EOF

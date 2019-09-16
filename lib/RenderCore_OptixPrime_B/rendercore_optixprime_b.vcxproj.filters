@@ -77,5 +77,8 @@
     <CudaCompile Include="kernels\extendPath.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
+    <CudaCompile Include="kernels\connectionPath.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

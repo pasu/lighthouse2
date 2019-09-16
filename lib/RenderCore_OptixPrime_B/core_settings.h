@@ -99,9 +99,11 @@ struct BiPathState
     
     float4 light_intersection;
     float4 eye_intersection;
-    uint4 pathInfo; // s_t_type_pass
+
     float4 light_normal;
     float4 eye_normal;
+
+    uint4 pathInfo; // s_t_type_pass
 };
 
 // counters and other global data, in device memory

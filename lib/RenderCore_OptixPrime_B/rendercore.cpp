@@ -72,7 +72,9 @@ void extendPath(int pathCount, BiPathState* pathStateBuffer,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
     const float3 right, const float3 up, const float3 forward, const float3 p1, const float spreadAngle,
     const int4 screenParams);
-//void ConnectionPath(int pathCount, float4* pathStateBuffer);
+void connectionPath(int pathCount, BiPathState* pathStateBuffer,
+    const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
+    float4* accumulatorOnePass);
 //////////////////////////////////////////
 
 } // namespace lh2core
@@ -208,6 +210,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		delete shadowRayPotential;
 		delete shadowHitBuffer;
 		delete accumulator;
+        delete accumulatorOnePass;
         // BDPT
         /////////////////////////////
         delete constructLightBuffer;
@@ -224,6 +227,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		shadowRayPotential = new CoreBuffer<float4>( maxShadowRays, ON_DEVICE ); // .w holds pixel index
 		shadowHitBuffer = new CoreBuffer<uint>( (maxShadowRays + 31) >> 5 /* one bit per ray */, ON_DEVICE );
 		accumulator = new CoreBuffer<float4>( maxPixels * 2, ON_DEVICE );
+        accumulatorOnePass = new CoreBuffer<float4>(maxPixels, ON_DEVICE);
 		for (int i = 0; i < 2; i++)
 		{
 			extensionRayBuffer[i] = new CoreBuffer<Ray4>( maxPixels * spp, ON_DEVICE ),
@@ -252,6 +256,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 	}
 	// clear the accumulator
 	accumulator->Clear( ON_DEVICE );
+    accumulatorOnePass->Clear(ON_DEVICE);
 	samplesTaken = 0;
 }
 
@@ -501,6 +506,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     static float NKK = 3;
     if (!bInit)
     {
+        InitCountersForExtend(scrwidth * scrheight * scrspp);
         InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
         bInit = true;
     }    
@@ -548,41 +554,49 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
     for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
     {
-           constructionLightPos(lightCount, NKK, 
-               constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
-               RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
-               randomWalkRayBuffer->DevPtr());
+        constructionLightPos(lightCount, NKK, 
+            constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
+            RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
+            randomWalkRayBuffer->DevPtr());
 
-           //InitCountersForExtend(0);
+        extendPath(pathCount, pathDataBuffer->DevPtr(),
+            visibilityRayBuffer->DevPtr(),randomWalkRayBuffer->DevPtr(),
+            RandomUInt(camRNGseed), blueNoise->DevPtr(),
+            view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
 
-           extendPath(pathCount, pathDataBuffer->DevPtr(),
-               visibilityRayBuffer->DevPtr(),randomWalkRayBuffer->DevPtr(),
-               RandomUInt(camRNGseed), blueNoise->DevPtr(),
-               view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
+        pathDataBuffer->CopyToHost();
+        BiPathState* v = pathDataBuffer->HostPtr();
+        int* f1 = (int*)(&v[0].data4.x);
+        int* f21 = (int*)(&v[0].data4.w);
 
-           pathDataBuffer->CopyToHost();
-           BiPathState* v = pathDataBuffer->HostPtr();
-           int* f1 = (int*)(&v[0].data4.x);
-           int* f21 = (int*)(&v[0].data4.w);
+        counterBuffer->CopyToHost();
+        Counters& counters = counterBuffer->HostPtr()[0];
 
-//         CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
-//         CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
-//         CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
-//         CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
-//         CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
-// 
-//         CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, pathCount));
-//         CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, pathCount));
-//         CHK_PRIME(rtpQuerySetRays(queryVisibility, randomWalkRaysDesc));
-//         CHK_PRIME(rtpQuerySetHits(queryVisibility, randomWalkHitsDesc));
-//         CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
-// 
-//         ConnectionPath(pathCount, pathStateBuffer->DevPtr());
+        CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
+        CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
+        CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
+        CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
+        CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
 
-           counterBuffer->CopyToHost();
-           Counters& counters = counterBuffer->HostPtr()[0];
+        CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, counters.randomWalkRays));
+        CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, counters.randomWalkRays));
+        CHK_PRIME(rtpQuerySetRays(queryVisibility, randomWalkRaysDesc));
+        CHK_PRIME(rtpQuerySetHits(queryVisibility, randomWalkHitsDesc));
+        CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
 
-           lightCount = counters.activePaths;
+        randomWalkHitBuffer->CopyToHost();
+        Intersection* isect = randomWalkHitBuffer->HostPtr();
+
+        InitCountersForExtend(0);
+
+        counterBuffer->CopyToHost();
+        counters = counterBuffer->HostPtr()[0];
+
+        connectionPath(pathCount, pathDataBuffer->DevPtr(),randomWalkHitBuffer->DevPtr(),
+            visibilityHitBuffer->DevPtr(),accumulatorOnePass->DevPtr()); 
+
+        counterBuffer->CopyToHost();
+        counters = counterBuffer->HostPtr()[0];
     }
     CHK_PRIME(rtpQueryDestroy(queryVisibility));
     CHK_PRIME(rtpQueryDestroy(queryRandomWalk));
