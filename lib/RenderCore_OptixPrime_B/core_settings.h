@@ -92,7 +92,7 @@ struct BiPathState
     float4 data3; // light_dir queryId
 
     // eye vertex
-    float4 data4; // eye_throughput eye_dL
+    float4 data4; // eye_throughput eye_dE
     float4 data5; // eye_beta eye_p
     float4 data6; // eye_pos eye_pdf_solid
     float4 data7; // eye_dir queryId
@@ -101,7 +101,12 @@ struct BiPathState
     float4 eye_intersection;
 
     float4 light_normal;
+    float4 currentLight_hitData;;
     float4 eye_normal;
+    float4 currentEye_hitData;
+
+    float4 pre_light_dir;
+    float4 pre_eye_dir;
 
     uint4 pathInfo; // s_t_type_pass
 };

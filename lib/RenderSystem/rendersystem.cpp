@@ -218,9 +218,12 @@ void RenderSystem::SynchronizeSceneData()
 	SynchronizeSky();
 	SynchronizeTextures();
 	SynchronizeMaterials();
+
+    SynchronizeLights();
+
 	SynchronizeMeshes();
 	UpdateSceneGraph();
-	SynchronizeLights();
+	
 }
 
 //  +-----------------------------------------------------------------------------+

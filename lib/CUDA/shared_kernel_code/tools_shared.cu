@@ -317,4 +317,54 @@ LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s
     t = t & 255;
 }
 
+LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const float3 eye_pos, 
+    const float3 forward, const float3 light_pos, const float focalDistance, 
+    const float3 p1, const float3 right, const float3 up,
+    float3& throughput, float& pdf)
+{
+    float3 dir = light_pos - eye_pos;
+    float dist = length(dir);
+
+    dir /= dist;
+
+    float cosTheta = dot(forward, dir);
+
+    // check direction
+    if (cosTheta <= 0)
+    {
+        throughput = make_float3(0.0f);
+        return;
+    }
+
+    float x_length = length(right);
+    float y_length = length(up);
+
+    float distance = focalDistance / cosTheta;
+    float3 raster_pos = eye_pos + distance * dir;
+    float3 img_centre = p1 + 0.5f * (right + up);
+    float3 img_dir = raster_pos - img_centre;
+    float img_length = length(img_dir);
+
+    float img_cosTheta = fabs(dot(right / x_length,img_dir/ img_length));
+    float img_sinTheta = sqrtf(1 - img_cosTheta * img_cosTheta);
+
+    float x_offset = img_length * img_cosTheta;
+    float y_offset = img_length * img_sinTheta;
+
+    // check view fov
+    if (x_offset > x_length || y_offset > y_length)
+    {
+        throughput = make_float3(0.0f);
+        return;
+    }
+
+    float cos2Theta = cosTheta * cosTheta;
+    float lensArea = aperture != 0 ? aperture * aperture * PI : 1;
+
+    float We = 1.0f / (imgPlaneSize * lensArea * cos2Theta * cos2Theta);
+
+    throughput = make_float3(We);
+    pdf = dist * dist / (cosTheta * lensArea);
+}
+
 // EOF

@@ -22,12 +22,16 @@
 __global__  __launch_bounds__( 256 , 1 )
 void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays)
+    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->activePaths) return;
 
     int jobIndex = constructLightBuffer[gid];
+
+    float4 color = make_float4(1.0, 0.0, 0.0, 1.0);
+    accumulator[jobIndex] += accumulatorOnePass[jobIndex];
+    accumulatorOnePass[jobIndex] = make_float4(0.0f);
 
     const int scrhsize = screenParams.x & 0xffff;
     const int scrvsize = screenParams.x >> 16;
@@ -65,6 +69,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
     float3 pos = Sample_Le(r0, r1, r2, r3, normal, lightDir, throughput, lightPdf, pdfPos, pdfDir);
 
+    // PBR book equation [16.15]
     float3 beta = throughput * dot(normal, lightDir) / (lightPdf * pdfPos * pdfDir);
 
     float light_p = lightPdf * pdfPos;
@@ -93,10 +98,12 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 //  +-----------------------------------------------------------------------------+
 __host__ void constructionLightPos( int smcount, float NKK, uint* constructLightBuffer, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays)
+    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, pathStateData, R0, blueNoise, screenParams, randomWalkRays);
+    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, 
+        pathStateData, R0, blueNoise, screenParams, randomWalkRays,
+        accumulatorOnePass, accumulator);
 }
 
 // EOF

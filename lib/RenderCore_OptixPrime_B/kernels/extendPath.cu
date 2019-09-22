@@ -182,6 +182,8 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             pathStateData[jobIndex].data6 = make_float4(I, pdf_solidangle);
             pathStateData[jobIndex].data7 = make_float4(R, __int_as_float(randomWalkRayIdx));
             pathStateData[jobIndex].eye_normal = make_float4(fN, 0.0f);
+            pathStateData[jobIndex].pre_eye_dir = make_float4(dir, 0.0f);
+            pathStateData[jobIndex].currentEye_hitData = hitData;
         }
         else if (type == 2) // light path
         {
@@ -202,6 +204,8 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             pathStateData[jobIndex].data2 = make_float4(I, pdf_solidangle);
             pathStateData[jobIndex].data3 = make_float4(R, __int_as_float(randomWalkRayIdx));
             pathStateData[jobIndex].light_normal = make_float4(fN, 0.0f);
+            pathStateData[jobIndex].pre_light_dir = make_float4(dir, 0.0f);
+            pathStateData[jobIndex].currentLight_hitData = hitData;
         }
     }
 
