@@ -322,6 +322,9 @@ LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const
     const float3 p1, const float3 right, const float3 up,
     float3& throughput, float& pdf)
 {
+    throughput = make_float3(0.0f);
+    pdf = 0.0f;
+
     float3 dir = light_pos - eye_pos;
     float dist = length(dir);
 
@@ -332,7 +335,6 @@ LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const
     // check direction
     if (cosTheta <= 0)
     {
-        throughput = make_float3(0.0f);
         return;
     }
 
@@ -354,7 +356,6 @@ LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const
     // check view fov
     if (x_offset > x_length || y_offset > y_length)
     {
-        throughput = make_float3(0.0f);
         return;
     }
 

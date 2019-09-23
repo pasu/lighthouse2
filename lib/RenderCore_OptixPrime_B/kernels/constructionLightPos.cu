@@ -29,10 +29,6 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
     int jobIndex = constructLightBuffer[gid];
 
-    float4 color = make_float4(1.0, 0.0, 0.0, 1.0);
-    accumulator[jobIndex] += accumulatorOnePass[jobIndex];
-    accumulatorOnePass[jobIndex] = make_float4(0.0f);
-
     const int scrhsize = screenParams.x & 0xffff;
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
@@ -44,6 +40,10 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     uint t = 1;
     uint type = 0;
     uint sampleIdx = path_s_t_type_pass & 255;
+
+    accumulator[jobIndex] += accumulatorOnePass[jobIndex];
+    accumulator[jobIndex].w = sampleIdx;
+    accumulatorOnePass[jobIndex] = make_float4(0.0f);
 
     float r0,r1,r2,r3;
 
@@ -70,14 +70,14 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     float3 pos = Sample_Le(r0, r1, r2, r3, normal, lightDir, throughput, lightPdf, pdfPos, pdfDir);
 
     // PBR book equation [16.15]
-    float3 beta = throughput * dot(normal, lightDir) / (lightPdf * pdfPos * pdfDir);
+    float3 beta = throughput * fabs(dot(normal, lightDir)) / (lightPdf * pdfPos * pdfDir);
 
     float light_p = lightPdf * pdfPos;
     float dL = NKK / light_p;
     float light_pdf_solid = pdfDir;
 
     const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
-    randomWalkRays[randomWalkRayIdx].O4 = make_float4(pos, EPSILON);
+    randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(pos, lightDir, normal, geometryEpsilon), 0);
     randomWalkRays[randomWalkRayIdx].D4 = make_float4(lightDir, 1e34f);
 
     pathStateData[jobIndex].data0 = make_float4(throughput, dL);

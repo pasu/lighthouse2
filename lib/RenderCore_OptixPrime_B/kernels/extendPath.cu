@@ -76,7 +76,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
 
         float4 value = make_float4(make_float3(1.0f), 0.0f);
         float3 normal = normalize(forward);
-        float cosTheta = dot(normal, rayDir);
+        float cosTheta = fabs(dot(normal, rayDir));
 
         float eye_pdf_solid = 1.0f / (imgPlaneSize * cosTheta * cosTheta * cosTheta);
 
@@ -95,7 +95,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         float d, pdf_area, pdf_solidangle;
         float3 throughput, beta;
 
-        if (type == 0x01) // extend eye path
+        if (type == 1) // extend eye path
         {
             throughput = make_float3(pathStateData[jobIndex].data4);
             beta = make_float3(pathStateData[jobIndex].data5);
@@ -108,7 +108,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
 
             hitData = pathStateData[jobIndex].eye_intersection;
         }
-        else if (type == 0x10) // extend light path
+        else if (type == 2) // extend light path
         {
             throughput = make_float3(pathStateData[jobIndex].data0);
             beta = make_float3(pathStateData[jobIndex].data1);
@@ -134,7 +134,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
 
         throughput = beta;
-        pdf_area = pdf_solidangle * dot(-dir, fN) / (HIT_T * HIT_T);
+        pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
 
         float3 R;
         float r4, r5;
@@ -150,9 +150,8 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             r5 = RandomFloat(seed);
         }
         const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle);
-        //if (newBsdfPdf < EPSILON || isnan(newBsdfPdf)) return;
        
-        beta *= bsdf * dot(fN, R) / pdf_solidangle;
+        beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
 
         const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
@@ -172,7 +171,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
                 const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, light2eye, dir * -1.0f, bsdfPdf);
 
                 float3 normal = make_float3(pathStateData[jobIndex].eye_normal);
-                float light_p = bsdfPdf * dot(normal,dir) / (HIT_T * HIT_T);
+                float light_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
 
                 dE = (1.0f + light_p * d) / pdf_area;
             }
@@ -196,7 +195,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, eye2light, dir * -1.0f, bsdfPdf);
 
             float3 normal = make_float3(pathStateData[jobIndex].light_normal);
-            float eye_p = bsdfPdf * dot(normal, dir) / (HIT_T * HIT_T);
+            float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
             float dL = (1.0f + eye_p * d) / pdf_area;
 
             pathStateData[jobIndex].data0 = make_float4(throughput, dL);
