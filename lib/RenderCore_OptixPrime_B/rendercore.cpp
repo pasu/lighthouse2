@@ -562,16 +562,13 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
                 RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
                 randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), accumulator->DevPtr());
 
-            counterBuffer->CopyToHost();
-            Counters& counters = counterBuffer->HostPtr()[0];
-
             extendPath(pathCount, pathDataBuffer->DevPtr(),
                 visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
                 RandomUInt(camRNGseed), blueNoise->DevPtr(),
                 view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
 
             counterBuffer->CopyToHost();
-            counters = counterBuffer->HostPtr()[0];
+            Counters& counters = counterBuffer->HostPtr()[0];
             
             CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
             CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
@@ -585,22 +582,13 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             CHK_PRIME(rtpQuerySetHits(queryVisibility, randomWalkHitsDesc));
             CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
 
-            randomWalkHitBuffer->CopyToHost();
-            Intersection* isect = randomWalkHitBuffer->HostPtr();
-
             InitCountersForExtend(0);
-
-            counterBuffer->CopyToHost();
-            counters = counterBuffer->HostPtr()[0];
 
             float scene_area = 5989.0f;
             connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
                 visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
                 view.focalDistance, view.p1, right, up,
                 view.spreadAngle, accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr());
-
-            counterBuffer->CopyToHost();
-            counters = counterBuffer->HostPtr()[0];
         }
 
         renderTarget.BindSurface();
