@@ -182,6 +182,8 @@ void HostMesh::LoadGeometryFromOBJ( const string& fileName, const char* director
 	printf( "scene bounds: (%5.2f,%5.2f,%5.2f)-(%5.2f,%5.2f,%5.2f)\n",
 		sceneBounds.bmin3.x, sceneBounds.bmin3.y, sceneBounds.bmin3.z,
 		sceneBounds.bmax3.x, sceneBounds.bmax3.y, sceneBounds.bmax3.z );
+
+    printf("Area %f\n", sceneBounds.Area());
 	// extract full model data and materials
 	timer.reset();
 	triangles.resize( indices.size() );

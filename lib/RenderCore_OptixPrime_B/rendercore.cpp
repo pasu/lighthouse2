@@ -505,7 +505,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     // BDPT
     ///////////////////////////////////
     static bool bInit = false;
-    static float NKK = 2.89;
+    static float NKK = 1.1;
     if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
@@ -562,13 +562,16 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
                 RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
                 randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), accumulator->DevPtr());
 
+            counterBuffer->CopyToHost();
+            Counters& counters = counterBuffer->HostPtr()[0];
+
             extendPath(pathCount, pathDataBuffer->DevPtr(),
                 visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
                 RandomUInt(camRNGseed), blueNoise->DevPtr(),
                 view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
 
             counterBuffer->CopyToHost();
-            Counters& counters = counterBuffer->HostPtr()[0];
+            counters = counterBuffer->HostPtr()[0];
             
             CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
             CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
@@ -587,11 +590,17 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
             InitCountersForExtend(0);
 
-            float scene_area = 100.0f;
+            counterBuffer->CopyToHost();
+            counters = counterBuffer->HostPtr()[0];
+
+            float scene_area = 5989.0f;
             connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
                 visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
                 view.focalDistance, view.p1, right, up,
                 view.spreadAngle, accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr());
+
+            counterBuffer->CopyToHost();
+            counters = counterBuffer->HostPtr()[0];
         }
 
         renderTarget.BindSurface();

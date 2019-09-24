@@ -228,7 +228,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         }
     }
     //misWeight = 1.0f;
-    accumulatorOnePass[jobIndex] += make_float4((L*misWeight*8.5f), 0.0f);
+    accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
     
     int eye_hit = -1;
     int eye_hit_idx = __float_as_int(pathStateData[jobIndex].data7.w);
@@ -293,7 +293,6 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     {
         const uint constructLight = atomicAdd(&counters->activePaths, 1);
         constructLightBuffer[constructLight] = jobIndex;
-        //pass += 1;
     }
 
     if (eye_hit == -1 && type != 2)
@@ -304,12 +303,15 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float pdf_solidangle = pathStateData[jobIndex].data6.w;
         // hit miss : beta 
         float3 beta = make_float3(pathStateData[jobIndex].data5);
-        L = beta * background;
+        float3 contribution = beta * background;
+
+        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+        FIXNAN_FLOAT3(contribution);
 
         float dE = pathStateData[jobIndex].data4.w;
-        misWeight = 1.0f;// / (dE * (1.0f / scene_area) + NKK);
+        misWeight = 1.0f / (dE * (1.0f / (scene_area)) + NKK);
 
-        //accumulatorOnePass[jobIndex] = make_float4((L * misWeight),1.0f);
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight),0.0f);
     }
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
