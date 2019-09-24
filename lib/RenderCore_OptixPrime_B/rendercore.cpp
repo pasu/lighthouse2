@@ -557,40 +557,19 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     {
         for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
         {
-            counterBuffer->CopyToHost();
-            Counters& counters1 = counterBuffer->HostPtr()[0];
-
             constructionLightPos(lightCount, NKK,
                 constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
                 RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
                 randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), accumulator->DevPtr());
-
-            counterBuffer->CopyToHost();
-            counters1 = counterBuffer->HostPtr()[0];
-
-            pathDataBuffer->CopyToHost();
-            BiPathState* state = pathDataBuffer->HostPtr();
-
-            accumulator->CopyToHost();
-            float4* color = accumulator->HostPtr();
 
             extendPath(pathCount, pathDataBuffer->DevPtr(),
                 visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
                 RandomUInt(camRNGseed), blueNoise->DevPtr(),
                 view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
 
-            pathDataBuffer->CopyToHost();
-            BiPathState* v = pathDataBuffer->HostPtr();
-            int* f1 = (int*)(&v[0].data4.x);
-            int* f21 = (int*)(&v[0].data4.w);
-
             counterBuffer->CopyToHost();
             Counters& counters = counterBuffer->HostPtr()[0];
-            if (counters.shadowRays > 0)
-            {
-                int a = 100;
-            }
-
+            
             CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
             CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
             CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
@@ -608,25 +587,11 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
             InitCountersForExtend(0);
 
-            counterBuffer->CopyToHost();
-            counters = counterBuffer->HostPtr()[0];
-
             float scene_area = 100.0f;
             connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
                 visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
                 view.focalDistance, view.p1, right, up,
                 view.spreadAngle, accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr());
-
-            counterBuffer->CopyToHost();
-            counters = counterBuffer->HostPtr()[0];
-
-            constructLightBuffer->CopyToHost();
-            uint* indexV = constructLightBuffer->HostPtr();
-
-            accumulatorOnePass->CopyToHost();
-            float4* cp = accumulatorOnePass->HostPtr();
-
-            int a = 100;
         }
 
         renderTarget.BindSurface();
