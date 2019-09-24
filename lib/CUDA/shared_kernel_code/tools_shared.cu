@@ -309,12 +309,12 @@ LH2_DEVFUNC float blueNoiseSampler( const uint* blueNoise, int x, int y, int sam
 
 LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s, uint& t, uint& type)
 {
-    pass = path_s_t_type_pass & 255;
-    type = path_s_t_type_pass >> 8;
-    t = type >> 8;
-    s = t >> 8;
-    type = type & 255;
-    t = t & 255;
+    pass = (path_s_t_type_pass & 524287);
+    type = (path_s_t_type_pass >> 19);
+    t = (type >> 3);
+    s = (t >> 5);
+    type = (type & 7);
+    t = (t & 31);
 }
 
 LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const float3 eye_pos, 

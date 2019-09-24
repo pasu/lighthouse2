@@ -39,7 +39,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     uint s = 0;
     uint t = 1;
     uint type = 0;
-    uint sampleIdx = path_s_t_type_pass & 255;
+    uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
 
     accumulator[jobIndex] += accumulatorOnePass[jobIndex];
     accumulator[jobIndex].w = sampleIdx;
@@ -87,7 +87,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     pathStateData[jobIndex].light_normal = make_float4(normal, 0.0f);
 
     sampleIdx++;
-    path_s_t_type_pass = (s << 24) + (t<<16) + (type<<8) + sampleIdx;
+    path_s_t_type_pass = (s << 27) + (t<<22) + (type<<19) + sampleIdx;
 
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 }

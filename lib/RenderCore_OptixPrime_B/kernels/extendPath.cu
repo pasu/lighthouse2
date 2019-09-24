@@ -44,7 +44,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = pass + y / scrvsize;
+    const uint sampleIndex = pass;
     y %= scrvsize;
 
     if((type & 0x1) == 0)
@@ -208,7 +208,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         }
     }
 
-    path_s_t_type_pass = (s << 24) + (t << 16) + (type << 8) + pass;
+    path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
     float3 eye_pos = make_float3(pathStateData[jobIndex].data6);

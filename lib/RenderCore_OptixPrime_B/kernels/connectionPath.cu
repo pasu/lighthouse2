@@ -227,8 +227,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
             }
         }
     }
-    
-    accumulatorOnePass[jobIndex] += make_float4((L * misWeight * 8.5f), misWeight);
+    //misWeight = 1.0f;
+    accumulatorOnePass[jobIndex] += make_float4((L*misWeight*8.5f), 0.0f);
     
     int eye_hit = -1;
     int eye_hit_idx = __float_as_int(pathStateData[jobIndex].data7.w);
@@ -314,7 +314,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
     //type = 0;
-    path_s_t_type_pass = (s << 24) + (t << 16) + (type << 8) + pass;
+    path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
 //    const uint constructLight = atomicAdd(&counters->activePaths, 1);
