@@ -505,7 +505,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     // BDPT
     ///////////////////////////////////
     static bool bInit = false;
-    static float NKK = 1.1;
+    static float NKK = 1.8;
     if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
@@ -557,6 +557,12 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     {
         for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
         {
+            constructLightBuffer->CopyToHost();
+            uint* index = constructLightBuffer->HostPtr();
+
+            accumulatorOnePass->CopyToHost();
+            float4* color = accumulatorOnePass->HostPtr();
+
             constructionLightPos(lightCount, NKK,
                 constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
                 RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),

@@ -39,7 +39,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass,pass,s,t,type);
 
-    float3 L = make_float3(0.0f);
+    const float3 empty_color = make_float3(0.0f);
+    float3 L = empty_color;
     float misWeight = 0.0f;
 
     const uint occluded = visibilityHitBuffer[jobIndex >> 5] & (1 << (jobIndex & 31));
@@ -116,7 +117,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
                 if (bsdfPdf < EPSILON || isnan(bsdfPdf))
                 {
-                    misWeight = 0.0f;
+                    L = empty_color;
                 }
             }
             else
@@ -170,7 +171,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf) 
                     || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
                 {
-                    misWeight = 0.0f;
+                    L = empty_color;
                 }
             }
         }
@@ -223,12 +224,12 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
             if (bsdfPdf < EPSILON || isnan(bsdfPdf))
             {
-                misWeight = 0.0f;
+                L = empty_color;
             }
         }
     }
     //misWeight = 1.0f;
-    accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
+    accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
     
     int eye_hit = -1;
     int eye_hit_idx = __float_as_int(pathStateData[jobIndex].data7.w);
@@ -311,7 +312,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f / (dE * (1.0f / (scene_area)) + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight),0.0f);
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
