@@ -30,7 +30,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float aperture, const float imgPlaneSize,
     const float3 pos, const float3 right, const float3 up, const float3 forward, const float3 p1,
-    const float spreadAngle, const int4 screenParams)
+    const float spreadAngle, const int4 screenParams, const int probePixelIdx)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
@@ -161,6 +161,12 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         {
             s++;
 
+            // the ray is from eye to the pixel directly
+            if (jobIndex == probePixelIdx && s == 1)
+                counters->probedInstid = INSTANCEIDX,	// record instace id at the selected pixel
+                counters->probedTriid = primIdx,		// record primitive id at the selected pixel
+                counters->probedDist = HIT_T;			// record primary ray hit distance
+
             float dE = 1.0f / pdf_area;
             if (s > 1)
             {
@@ -228,13 +234,13 @@ __host__ void extendPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize,
     const float3 camPos, const float3 right, const float3 up, const float3 forward, const float3 p1,
-    const float spreadAngle, const int4 screenParams)
+    const float spreadAngle, const int4 screenParams, const int probePixelIdx)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     extendPathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
         R0, blueNoise, lensSize, imgPlaneSize,
-        camPos, right, up, forward, p1, spreadAngle, screenParams);
+        camPos, right, up, forward, p1, spreadAngle, screenParams, probePixelIdx);
 }
 
 // EOF

@@ -71,7 +71,7 @@ void extendPath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
     const float3 right, const float3 up, const float3 forward, const float3 p1, const float spreadAngle,
-    const int4 screenParams);
+    const int4 screenParams, const int probePixelIdx);
 void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pathStateBuffer,
     const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
     const float aperture, const float imgPlaneSize, const float3 forward, 
@@ -497,7 +497,12 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 	// clean accumulator, if requested
 	if (converge == Restart)
 	{
-		//accumulator->Clear( ON_DEVICE );
+		accumulator->Clear( ON_DEVICE );
+        accumulatorOnePass->Clear(ON_DEVICE);
+
+        InitCountersForExtend(scrwidth * scrheight * scrspp);
+        InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
+
 		samplesTaken = 0;
 		camRNGseed = 0x12345678; // same seed means same noise.
 	}
@@ -505,7 +510,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     // BDPT
     ///////////////////////////////////
     static bool bInit = false;
-    static float NKK = 1.8;
+    static float NKK = 1.1;
     if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
@@ -571,7 +576,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             extendPath(pathCount, pathDataBuffer->DevPtr(),
                 visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
                 RandomUInt(camRNGseed), blueNoise->DevPtr(),
-                view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams());
+                view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams(),
+                probePos.x + scrwidth * probePos.y);
 
             counterBuffer->CopyToHost();
             Counters& counters = counterBuffer->HostPtr()[0];
@@ -595,6 +601,10 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
                 visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
                 view.focalDistance, view.p1, right, up,
                 view.spreadAngle, accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr());
+
+            coreStats.probedInstid = counters.probedInstid;
+            coreStats.probedTriid = counters.probedTriid;
+            coreStats.probedDist = counters.probedDist;
         }
 
         renderTarget.BindSurface();
