@@ -29,10 +29,18 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
     const float aperture, const float imgPlaneSize, const float3 forward,
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
-    const float spreadAngle, float4* accumulatorOnePass, uint* constructLightBuffer)
+    const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
+    float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
+    Ray4* photomappingRays, uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
+
+    const int scrhsize = screenParams.x & 0xffff;
+    const int scrvsize = screenParams.x >> 16;
+
+    const uint x_line = jobIndex % scrhsize;
+    uint y_line = jobIndex / scrhsize;
 
     uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
 
@@ -45,12 +53,18 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
     const uint occluded = visibilityHitBuffer[jobIndex >> 5] & (1 << (jobIndex & 31));
 
+    bool bAddImplicitPath = false;
+    bool bAddExplicitPath = false;
+    bool bAddCombinedPath = false;
+    bool bAddPhotoMappingPath = true;
+
     if (type == 1)
     {
         float4 hitData = pathStateData[jobIndex].currentEye_hitData;
         float3 dir = make_float3(pathStateData[jobIndex].pre_eye_dir);
 
         float3 throughput = make_float3(pathStateData[jobIndex].data4);
+        float3 beta = make_float3(pathStateData[jobIndex].data5);
         float3 eye_pos= make_float3(pathStateData[jobIndex].data6);
         float3 pre_pos = eye_pos - dir * HIT_T;
         float dE = pathStateData[jobIndex].data4.w;
@@ -67,21 +81,22 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
 
         // implicit path s == k
-        if (shadingData.IsEmissive() /* r, g or b exceeds 1 */)
+        if (shadingData.IsEmissive() && bAddImplicitPath)
         {
-            L = throughput * shadingData.color;
+            L = throughput * shadingData.color;// should be beta
 
             const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
             const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
             const float pdfPos = 1.0f / tri.area;
 
-            const float p_rev = pickProb * pdfPos;
+            const float p_rev = pickProb * pdfPos; // surface area
 
             misWeight = 1.0f / (dE * p_rev + NKK);
+            weightMeasureBuffer[jobIndex].x += misWeight;
         }
-        else if (!occluded)
+        else
         {
-            if (t == 1)
+            if (t == 1 && bAddExplicitPath)
             {
                 float3 light_pos = make_float3(pathStateData[jobIndex].data2);
                 float3 light2eye = light_pos - eye_pos;
@@ -102,8 +117,6 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
                 float cosTheta = fabs(dot(fN, light2eye));
 
-                L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;                
-
                 float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
                 float eye_cosTheta = fabs(dot(light2eye, eye_normal));
 
@@ -114,13 +127,26 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 float dL = pathStateData[jobIndex].data0.w;
 
                 misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
+                weightMeasureBuffer[jobIndex].y += misWeight;
+
+                if (!occluded)
+                {
+                    L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+                   
+                    /*
+                    if (jobIndex == probePixelIdx)
+                    {
+                        printf("%f,%f,%f,%f\n", L.x, L.y, L.z, misWeight);
+                    }
+                    */
+                }
 
                 if (bsdfPdf < EPSILON || isnan(bsdfPdf))
                 {
                     L = empty_color;
                 }
             }
-            else
+            else if (bAddCombinedPath)
             {
                 float3 light_pos = make_float3(pathStateData[jobIndex].data2);
                 float3 light2eye = light_pos - eye_pos;
@@ -158,7 +184,10 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 float cosTheta_light = fabs(dot(fN_light, light2eye* -1.0f));
                 float G = cosTheta_eye * cosTheta_light / (length_l2e * length_l2e);
 
-                L = throughput * sampledBSDF_s * sampledBSDF_t * throughput_light * G;
+                if (!occluded)
+                {
+                    L = throughput * sampledBSDF_s * sampledBSDF_t * throughput_light * G;
+                }
 
                 float p_forward = eye_bsdfPdf * cosTheta_light / (length_l2e * length_l2e);
                 float p_rev = light_bsdfPdf * cosTheta_eye / (length_l2e * length_l2e);
@@ -167,6 +196,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 float dL = pathStateData[jobIndex].data0.w;
 
                 misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
+                weightMeasureBuffer[jobIndex].z += misWeight;
 
                 if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf) 
                     || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
@@ -176,10 +206,10 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
             }
         }
     }
-    else if (type == 2 && !occluded)
+    else if (type == 2 && bAddPhotoMappingPath)
     {
         float3 light_pos = make_float3(pathStateData[jobIndex].data2);
-        float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
+        float3 eye_pos = camPos;
 
         float3 light2eye = eye_pos - light_pos;
         float length_l2e = length(light2eye);
@@ -187,8 +217,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
         float3 throughput_eye;
         float pdf_eye;
+        float u, v;
         Sample_Wi(aperture,imgPlaneSize,eye_pos,forward,light_pos,
-            focalDistance, p1, right, up, throughput_eye, pdf_eye);
+            focalDistance, p1, right, up, throughput_eye, pdf_eye, u, v);
 
         if (pdf_eye > EPSILON)
         {
@@ -209,12 +240,10 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
             float bsdfPdf;
             const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
 
-            float3 throughput = make_float3(pathStateData[jobIndex].data0);
+            float3 light_throught = make_float3(pathStateData[jobIndex].data0);
             float cosTheta = fabs(dot(fN, light2eye));
 
-            L = throughput * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
-
-            float eye_cosTheta = fabs(dot(forward, light2eye * -1.0f));
+            float eye_cosTheta = fabs(dot(normalize(forward), light2eye * -1.0f));
             float eye_pdf_solid = 1.0f / (imgPlaneSize * eye_cosTheta * eye_cosTheta * eye_cosTheta);
             float p_forward = eye_pdf_solid * cosTheta / (length_l2e * length_l2e);
 
@@ -222,10 +251,41 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
             misWeight = 1.0f / (1 + dL * p_forward);
 
+            if (!occluded)
+            {
+                uint x = (scrhsize * u + 0.5);
+                uint y = (scrvsize * v + 0.5);
+                uint idx = y * scrhsize + x;
+
+                L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
+                accumulatorOnePass[idx] += make_float4((L*misWeight), misWeight);
+                weightMeasureBuffer[idx].w += misWeight;
+
+                const uint pm_idx = atomicAdd(&counters->photomappings, 1);
+
+                photomappingBuffer[pm_idx] = make_float4(L, __int_as_float(idx));
+
+                photomappingRays[pm_idx].O4 = make_float4(SafeOrigin(camPos, light2eye * -1.0f, 
+                    normalize(forward), geometryEpsilon), 0);
+                photomappingRays[pm_idx].D4 = make_float4(light2eye * -1.0f, length_l2e - 2 * geometryEpsilon);
+                /*
+                if (idx == probePixelIdx)
+                {
+                    printf("%f,%f,%f,%f\n", L.x, L.y, L.z, misWeight);
+                }
+                */
+
+                L = make_float3(0.0f);
+                misWeight = 0.0f;
+                
+            }
+            //printf("w:%f\n", misWeight);
+            /*
             if (bsdfPdf < EPSILON || isnan(bsdfPdf))
             {
                 L = empty_color;
             }
+            */
         }
     }
     //misWeight = 1.0f;
@@ -253,9 +313,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
     int light_hit = -1;
     int light_hit_idx = __float_as_int(pathStateData[jobIndex].data3.w);
-    float light_pdf = pathStateData[jobIndex].data2.w;
-
-    if (light_pdf < EPSILON || isnan(light_pdf))
+    float light_pdf_test = pathStateData[jobIndex].data2.w;
+    if (light_pdf_test < EPSILON || isnan(light_pdf_test))
     {
         light_hit = -1;
         pathStateData[jobIndex].data3.w = __int_as_float(-1);
@@ -280,7 +339,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     }
 
     const uint MAX__LENGTH_E = 3;
-    const uint MAX__LENGTH_L = 3;
+    const uint MAX__LENGTH_L = 5;
 
     if (eye_hit != -1 && s < MAX__LENGTH_E)
     {
@@ -312,7 +371,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f / (dE * (1.0f / (scene_area)) + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
+        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
@@ -334,12 +393,16 @@ __host__ void connectionPath(int smcount, float NKK, float scene_area, BiPathSta
     const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
     const float aperture, const float imgPlaneSize, const float3 forward, 
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
-    const float spreadAngle, float4* accumulatorOnePass, uint* constructLightBuffer)
+    const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
+    float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
+    Ray4* photomappingRays, uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, pathStateBuffer,
         randomWalkHitBuffer,visibilityHitBuffer, aperture, imgPlaneSize,
-        forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, constructLightBuffer);
+        forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, accumulator, constructLightBuffer,
+        weightMeasureBuffer, probePixelIdx, screenParams,
+        photomappingRays, photomappingIdx, photomappingBuffer, camPos);
 }
 
 // EOF

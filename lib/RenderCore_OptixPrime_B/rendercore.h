@@ -100,6 +100,7 @@ private:
 
     // BDPT
     ///////////////////////////
+    CoreBuffer<float4>* weightMeasureBuffer = 0;
     CoreBuffer<uint>* constructLightBuffer = 0; // buffer for OptiX intersection results
 
     CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
@@ -113,6 +114,14 @@ private:
     CoreBuffer<Intersection>* randomWalkHitBuffer = 0; // buffer for OptiX intersection results
     RTPbufferdesc randomWalkRaysDesc;				// buffer descriptor for extension rays
     RTPbufferdesc randomWalkHitsDesc;				// buffer descriptor for extension ray hits
+
+    CoreBuffer<float4>* photomapping = 0;
+    CoreBuffer<uint>* photomappingIdx = 0;
+
+    CoreBuffer<Ray4>* photomappingRayBuffer = 0;
+    CoreBuffer<uint>* photomappingHitBuffer = 0;
+    RTPbufferdesc photomappingRaysDesc;				// buffer descriptor for extension rays
+    RTPbufferdesc photomappingHitsDesc;
     ///////////////////////////////
 	
     CoreBuffer<float4>* extensionRayExBuffer[2] = { 0, 0 };	// additional path state data

@@ -347,16 +347,16 @@ LH2_DEVFUNC float3 Sample_Le(const float& r0, float r1, const float& r2, const f
 
         float3 u, v;
 
-        if (fabsf(normal.x) > fabsf(normal.x))
+        if (fabsf(normal.x) > 0.99f)
         {
-            u = normalize(cross(make_float3(0.0f, 1.0f, 0.0f), normal));
+            u = normalize(cross(normal, make_float3(0.0f, 1.0f, 0.0f)));
         }
         else
         {
-            u = normalize(cross(make_float3(1.0f, 0.0f, 0.0f), normal));
+            u = normalize(cross(normal, make_float3(1.0f, 0.0f, 0.0f)));
         }
 
-        v = cross(normal, u);
+        v = cross(u, normal);
 
         lightDir = normalize(dir_loc.x * u + dir_loc.y * v + dir_loc.z * normal);
 

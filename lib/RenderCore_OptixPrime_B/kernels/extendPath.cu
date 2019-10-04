@@ -29,7 +29,7 @@ __global__  __launch_bounds__( 256 , 1 )
 void extendPathKernel( int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float aperture, const float imgPlaneSize,
-    const float3 pos, const float3 right, const float3 up, const float3 forward, const float3 p1,
+    const float3 cam_pos, const float3 right, const float3 up, const float3 forward, const float3 p1,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
@@ -67,7 +67,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             r2 = RandomFloat(seed), r3 = RandomFloat(seed);
         }
         posOnPixel = p1 + ((float)x + r0) * (right / (float)scrhsize) + ((float)y + r1) * (up / (float)scrvsize);
-        posOnLens = RandomPointOnLens(r2, r3, pos, aperture, right, up);
+        posOnLens = RandomPointOnLens(r2, r3, cam_pos, aperture, right, up);
         const float3 rayDir = normalize(posOnPixel - posOnLens);
 
         const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
@@ -194,7 +194,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         {
             t++;
 
-            float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
+            float3 eye_pos = cam_pos;
             float3 eye2light = normalize(eye_pos - I);
 
             float bsdfPdf;
@@ -218,9 +218,16 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
     float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
-    float3 eye2light = normalize(make_float3(pathStateData[jobIndex].data2) - eye_pos);
+    if (type == 2)
+    {
+        eye_pos = cam_pos; // camera pos
+    }
+
+    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
+    float3 eye2light = light_pos - eye_pos;
     float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
     const float dist = length(eye_pos - eye2light);
+    eye2light = eye2light / dist;
 
     visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
     visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);

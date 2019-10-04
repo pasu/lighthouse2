@@ -87,6 +87,7 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
 	counters->shadowRays = 0;			// compaction counter for connections
 	counters->totalExtensionRays = pathCount;
 	counters->totalShadowRays = 0;
+    counters->photomappings = 0;
 }
 __host__ void InitCountersForExtend( int pathCount ) { InitCountersForExtend_Kernel << <1, 32 >> > (pathCount); }
 __global__ void InitCountersSubsequent_Kernel()

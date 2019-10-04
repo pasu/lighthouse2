@@ -317,10 +317,10 @@ LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s
     t = (t & 31);
 }
 
-LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const float3 eye_pos, 
-    const float3 forward, const float3 light_pos, const float focalDistance, 
+LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const float3 eye_pos,
+    const float3 forward, const float3 light_pos, const float focalDistance,
     const float3 p1, const float3 right, const float3 up,
-    float3& throughput, float& pdf)
+    float3& throughput, float& pdf, float& u, float& v)
 {
     throughput = make_float3(0.0f);
     pdf = 0.0f;
@@ -330,7 +330,7 @@ LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const
 
     dir /= dist;
 
-    float cosTheta = dot(forward, dir);
+    float cosTheta = dot(normalize(forward), dir);
 
     // check direction
     if (cosTheta <= 0)
@@ -342,26 +342,32 @@ LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const
     float y_length = length(up);
 
     float distance = focalDistance / cosTheta;
+
     float3 raster_pos = eye_pos + distance * dir;
-    float3 img_centre = p1 + 0.5f * (right + up);
-    float3 img_dir = raster_pos - img_centre;
-    float img_length = length(img_dir);
+    float3 pos2p1 = raster_pos - p1;
 
-    float img_cosTheta = fabs(dot(right / x_length,img_dir/ img_length));
-    float img_sinTheta = sqrtf(1 - img_cosTheta * img_cosTheta);
+    float3 unit_up = up / y_length;
+    float3 unit_right = right / x_length;
 
-    float x_offset = img_length * img_cosTheta;
-    float y_offset = img_length * img_sinTheta;
+    float x_offset = dot(unit_right, pos2p1);
+    float y_offset = dot(unit_up, pos2p1);
 
     // check view fov
-    if (x_offset > x_length || y_offset > y_length)
+    if (x_offset<0 || x_offset > x_length
+        || y_offset<0 || y_offset > y_length)
     {
+        //printf("%f,%f,%f,%f\n", x_offset, x_length,y_offset, y_length);
         return;
     }
 
+    //printf("in raster\n");
+
+    u = x_offset / x_length;
+    v = y_offset / y_length;
+
     float cos2Theta = cosTheta * cosTheta;
     float lensArea = aperture != 0 ? aperture * aperture * PI : 1;
-
+    lensArea = 1.0f; // because We / pdf
     float We = 1.0f / (imgPlaneSize * lensArea * cos2Theta * cos2Theta);
 
     throughput = make_float3(We);

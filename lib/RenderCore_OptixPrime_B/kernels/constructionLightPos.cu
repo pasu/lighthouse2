@@ -22,7 +22,8 @@
 __global__  __launch_bounds__( 256 , 1 )
 void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator)
+    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator,
+    float4* weightMeasureBuffer, const int probePixelIdx)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->activePaths) return;
@@ -40,10 +41,25 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     uint t = 1;
     uint type = 0;
     uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
+    /*
+    if (jobIndex == probePixelIdx)
+    {
+        uint pass, eye, light, c;
 
+        getPathInfo(path_s_t_type_pass,pass,eye,light,c);
+        //printf("%d,%d\n", eye,light);
+        //float4 v4 = weightMeasureBuffer[jobIndex];
+        //float fSum = v4.x + v4.y + v4.z + v4.w;
+        //printf("%f,%f,%f,%f\n", v4.x / fSum, v4.y / fSum, v4.z / fSum, v4.w / fSum);
+
+        float4 color = accumulatorOnePass[jobIndex];
+        printf("%f,%f,%f,%d,%d,%d\n", color.x, color.y, color.z, eye,light, sampleIdx);
+    }
+    */
     accumulator[jobIndex] += accumulatorOnePass[jobIndex];
     accumulator[jobIndex].w = sampleIdx;
     accumulatorOnePass[jobIndex] = make_float4(0.0f);
+    weightMeasureBuffer[jobIndex] = make_float4(0.0f);
 
     float r0,r1,r2,r3;
 
@@ -98,12 +114,13 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 //  +-----------------------------------------------------------------------------+
 __host__ void constructionLightPos( int smcount, float NKK, uint* constructLightBuffer, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator)
+    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator,
+    float4* weightMeasureBuffer, const int probePixelIdx)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, 
         pathStateData, R0, blueNoise, screenParams, randomWalkRays,
-        accumulatorOnePass, accumulator);
+        accumulatorOnePass, accumulator, weightMeasureBuffer,probePixelIdx);
 }
 
 // EOF
