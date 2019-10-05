@@ -1,7 +1,7 @@
 // Lambert BSDF
 // ----------------------------------------------------------------
 
-__device__ static float Fr(float VDotN, float eio)
+__device__ static float Fr_L(float VDotN, float eio)
 {
     if (VDotN < 0.0f)
     {
@@ -18,9 +18,9 @@ __device__ static float Fr(float VDotN, float eio)
     return 0.5f * (sqr(r1) + sqr(r2));
 }
 
-__device__ static inline bool Refract(const float3 &wi, const float3 &n, const float eta, float3& wt)
+__device__ static inline bool Refract_L(const float3 &wi, const float3 &n, const float eta, float3& wt)
 {
-    float cosThetaI = dot(n, wi);
+    float cosThetaI = fabs(dot(n, wi));
     float sin2ThetaI = max(0.0f, 1.0f - cosThetaI * cosThetaI);
     float sin2ThetaT = eta * eta * sin2ThetaI;
     if (sin2ThetaT >= 1) return false; // TIR
@@ -48,10 +48,10 @@ __device__ static float3 SampleBSDF( const ShadingData& shadingData,
         N = N * -1.0f;
     }
     */
-    if (r3 < TRANSMISSION && false)
+    if (r3 < TRANSMISSION)
     {
         // specular
-        float F = Fr(dot(N, wo), ETA);
+        float F = Fr_L(dot(N, wo), ETA);
         if (r4 < F)
         {
             // pure specular
@@ -62,14 +62,13 @@ __device__ static float3 SampleBSDF( const ShadingData& shadingData,
         }
         else
         {
-            pdf = 0;
-            if (Refract(wo, N, ETA, wi))
+            bool entering = dot(wo, N) > 0.0f;
+
+            float eio = entering ? ETA : 1.0f / ETA;
+
+            if (Refract_L(wo, N, eio, wi))
             {
                 pdf = 1.0f;
-
-                bool entering = dot(wo, N)>0.0f;
-
-                float eio = entering ? ETA : 1.0f / ETA;
 
                 float3 ft = shadingData.color;
                 if (true)

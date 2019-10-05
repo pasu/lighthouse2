@@ -53,9 +53,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
     const uint occluded = visibilityHitBuffer[jobIndex >> 5] & (1 << (jobIndex & 31));
 
-    bool bAddImplicitPath = false;
-    bool bAddExplicitPath = false;
-    bool bAddCombinedPath = false;
+    bool bAddImplicitPath = true;
+    bool bAddExplicitPath = true;
+    bool bAddCombinedPath = true;
     bool bAddPhotoMappingPath = true;
 
     if (type == 1)

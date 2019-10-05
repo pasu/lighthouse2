@@ -41,6 +41,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     uint t = 1;
     uint type = 0;
     uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
+    
     /*
     if (jobIndex == probePixelIdx)
     {
@@ -48,14 +49,15 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
         getPathInfo(path_s_t_type_pass,pass,eye,light,c);
         //printf("%d,%d\n", eye,light);
-        //float4 v4 = weightMeasureBuffer[jobIndex];
-        //float fSum = v4.x + v4.y + v4.z + v4.w;
-        //printf("%f,%f,%f,%f\n", v4.x / fSum, v4.y / fSum, v4.z / fSum, v4.w / fSum);
+        float4 v4 = weightMeasureBuffer[jobIndex];
+        float fSum = v4.x + v4.y + v4.z + v4.w;
+        printf("%f,%f,%f,%f,%f\n", v4.x / fSum, v4.y / fSum, v4.z / fSum, v4.w / fSum, fSum);
 
-        float4 color = accumulatorOnePass[jobIndex];
-        printf("%f,%f,%f,%d,%d,%d\n", color.x, color.y, color.z, eye,light, sampleIdx);
+        //float4 color = accumulatorOnePass[jobIndex];
+        //printf("%f,%f,%f,%d,%d,%d\n", color.x, color.y, color.z, eye,light, sampleIdx);
     }
     */
+    
     accumulator[jobIndex] += accumulatorOnePass[jobIndex];
     accumulator[jobIndex].w = sampleIdx;
     accumulatorOnePass[jobIndex] = make_float4(0.0f);
