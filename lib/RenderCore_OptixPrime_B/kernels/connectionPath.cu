@@ -213,13 +213,13 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
                 weightMeasureBuffer[jobIndex].z += misWeight;
 
-                /*
+                
                 if (jobIndex == probePixelIdx)
                 {
                     printf("combined:%f,%f,%f,%f,%d,%d\n", L.x, L.y, L.z, misWeight,s,t);
                 }
 
-                
+                /*
                 if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf) 
                     || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
                 {
@@ -402,7 +402,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
