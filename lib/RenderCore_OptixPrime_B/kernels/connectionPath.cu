@@ -83,7 +83,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         // implicit path s == k
         if (shadingData.IsEmissive() && bAddImplicitPath)
         {
-            L = throughput * shadingData.color;// should be beta
+            L = throughput * shadingData.color;
 
             const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
             const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
@@ -132,6 +132,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 if (!occluded)
                 {
                     L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+                    //printf("%f,%f\n", light_pdf, light_throughput.x);
                    
                     /*
                     if (jobIndex == probePixelIdx)
@@ -198,11 +199,13 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
                 weightMeasureBuffer[jobIndex].z += misWeight;
 
+                /*
                 if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf) 
                     || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
                 {
                     L = empty_color;
                 }
+                */
             }
         }
     }
@@ -258,8 +261,15 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 uint idx = y * scrhsize + x;
 
                 L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
-                accumulatorOnePass[idx] += make_float4((L*misWeight), misWeight);
-                weightMeasureBuffer[idx].w += misWeight;
+
+                //misWeight = 1.0f;
+                float4 res_color = make_float4((L*misWeight), misWeight);
+                atomicAdd(&(accumulatorOnePass[idx].x), res_color.x);
+                atomicAdd(&(accumulatorOnePass[idx].y), res_color.y);
+                atomicAdd(&(accumulatorOnePass[idx].z), res_color.z);
+                atomicAdd(&(accumulatorOnePass[idx].w), res_color.w);
+                //accumulatorOnePass[idx] += ;
+                //weightMeasureBuffer[idx].w += misWeight;
 
                 const uint pm_idx = atomicAdd(&counters->photomappings, 1);
 
@@ -276,7 +286,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 */
 
                 L = make_float3(0.0f);
-                misWeight = 0.0f;
+                //misWeight = 0.0f;
                 
             }
             //printf("w:%f\n", misWeight);
@@ -369,9 +379,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         FIXNAN_FLOAT3(contribution);
 
         float dE = pathStateData[jobIndex].data4.w;
-        misWeight = 1.0f / (dE * (1.0f / (scene_area)) + NKK);
+        misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);

@@ -149,9 +149,21 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             r4 = RandomFloat(seed);
             r5 = RandomFloat(seed);
         }
-        const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle);
+        const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle,type);
        
         beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
+
+        // correct shading normal when it is importance
+        if (type == 2)
+        {
+            float shading_normal_num = fabs(dot(dir, fN)) * fabs(dot(R, N));
+            float shading_normal_denom = fabs(dot(dir, N)) * fabs(dot(R, fN));
+
+            if (shading_normal_denom != 0)
+            {
+                beta *= (shading_normal_num / shading_normal_denom);
+            }
+        }
 
         const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
