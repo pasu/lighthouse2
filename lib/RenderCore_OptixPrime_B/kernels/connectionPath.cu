@@ -81,70 +81,76 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
 
         // implicit path s == k
-        if (shadingData.IsEmissive() && bAddImplicitPath)
+        if (shadingData.IsEmissive())
         {
-            L = throughput * shadingData.color;
+            if (bAddImplicitPath)
+            {
+                L = throughput * shadingData.color;
 
-            const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
-            const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
-            const float pdfPos = 1.0f / tri.area;
+                const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
+                const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
+                const float pdfPos = 1.0f / tri.area;
 
-            const float p_rev = pickProb * pdfPos; // surface area
+                const float p_rev = pickProb * pdfPos; // surface area
 
-            misWeight = 1.0f / (dE * p_rev + NKK);
-            weightMeasureBuffer[jobIndex].x += misWeight;
+                misWeight = 1.0f / (dE * p_rev + NKK);
+                weightMeasureBuffer[jobIndex].x += misWeight;
+            }
         }
         else
         {
-            if (t == 1 && bAddExplicitPath)
+            if (t == 1)
             {
-                float3 light_pos = make_float3(pathStateData[jobIndex].data2);
-                float3 light2eye = light_pos - eye_pos;
-                float length_l2e = length(light2eye);
-                light2eye /= length_l2e;
-
-                float bsdfPdf;
-                const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f,light2eye, bsdfPdf);
-
-                float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
-                float light_pdf = pathStateData[jobIndex].data1.w;
-                
-                float3 light_normal = make_float3(pathStateData[jobIndex].light_normal);
-                float light_cosTheta = fabs(dot(light2eye * -1.0f, light_normal));
-
-                // area to solid angle
-                light_pdf *= length_l2e * length_l2e / light_cosTheta;
-
-                float cosTheta = fabs(dot(fN, light2eye));
-
-                float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
-                float eye_cosTheta = fabs(dot(light2eye, eye_normal));
-
-                float p_forward = bsdfPdf * light_cosTheta / (length_l2e * length_l2e);
-                float p_rev = light_cosTheta * INVPI * eye_cosTheta / (length_l2e * length_l2e);
-
-                float dE = pathStateData[jobIndex].data4.w;
-                float dL = pathStateData[jobIndex].data0.w;
-
-                misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-                weightMeasureBuffer[jobIndex].y += misWeight;
-
-                if (!occluded)
+                if (bAddExplicitPath)
                 {
-                    L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
-                    //printf("%f,%f\n", light_pdf, light_throughput.x);
-                   
-                    /*
-                    if (jobIndex == probePixelIdx)
+                    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
+                    float3 light2eye = light_pos - eye_pos;
+                    float length_l2e = length(light2eye);
+                    light2eye /= length_l2e;
+
+                    float bsdfPdf;
+                    const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
+
+                    float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
+                    float light_pdf = pathStateData[jobIndex].data1.w;
+
+                    float3 light_normal = make_float3(pathStateData[jobIndex].light_normal);
+                    float light_cosTheta = fabs(dot(light2eye * -1.0f, light_normal));
+
+                    // area to solid angle
+                    light_pdf *= length_l2e * length_l2e / light_cosTheta;
+
+                    float cosTheta = fabs(dot(fN, light2eye));
+
+                    float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
+                    float eye_cosTheta = fabs(dot(light2eye, eye_normal));
+
+                    float p_forward = bsdfPdf * light_cosTheta / (length_l2e * length_l2e);
+                    float p_rev = light_cosTheta * INVPI * eye_cosTheta / (length_l2e * length_l2e);
+
+                    float dE = pathStateData[jobIndex].data4.w;
+                    float dL = pathStateData[jobIndex].data0.w;
+
+                    misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
+                    weightMeasureBuffer[jobIndex].y += misWeight;
+
+                    if (!occluded)
                     {
-                        printf("%f,%f,%f,%f\n", L.x, L.y, L.z, misWeight);
-                    }
-                    */
-                }
+                        L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+                        //printf("%f,%f\n", light_pdf, light_throughput.x);
 
-                if (bsdfPdf < EPSILON || isnan(bsdfPdf))
-                {
-                    L = empty_color;
+                        /*
+                        if (jobIndex == probePixelIdx)
+                        {
+                            printf("%f,%f,%f,%f\n", L.x, L.y, L.z, misWeight);
+                        }
+                        */
+                    }
+
+                    if (bsdfPdf < EPSILON || isnan(bsdfPdf))
+                    {
+                        L = empty_color;
+                    }
                 }
             }
             else if (bAddCombinedPath)
@@ -175,8 +181,16 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                     idx, shadingData_light, N_light, iN_light, fN_light, T_light);
 
                 float light_bsdfPdf;
-                const float3 sampledBSDF_t = EvaluateBSDF(shadingData_light, fN_light, T_light, 
+                float3 sampledBSDF_t = EvaluateBSDF(shadingData_light, fN_light, T_light, 
                     dir_light * -1.0f, light2eye * -1.0f, light_bsdfPdf);
+
+                float shading_normal_num = fabs(dot(dir_light, fN_light)) * fabs(dot(light2eye, N_light));
+                float shading_normal_denom = fabs(dot(dir_light, N_light)) * fabs(dot(light2eye, fN_light));
+
+                if (shading_normal_denom != 0)
+                {
+                    sampledBSDF_t *= (shading_normal_num / shading_normal_denom);
+                }
 
                 float3 throughput_light = make_float3(pathStateData[jobIndex].data0);
 
@@ -200,6 +214,12 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 weightMeasureBuffer[jobIndex].z += misWeight;
 
                 /*
+                if (jobIndex == probePixelIdx)
+                {
+                    printf("combined:%f,%f,%f,%f,%d,%d\n", L.x, L.y, L.z, misWeight,s,t);
+                }
+
+                
                 if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf) 
                     || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
                 {
@@ -278,10 +298,11 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
                 photomappingRays[pm_idx].O4 = make_float4(SafeOrigin(camPos, light2eye * -1.0f, 
                     normalize(forward), geometryEpsilon), 0);
                 photomappingRays[pm_idx].D4 = make_float4(light2eye * -1.0f, length_l2e - 2 * geometryEpsilon);
+                
                 /*
                 if (idx == probePixelIdx)
                 {
-                    printf("%f,%f,%f,%f\n", L.x, L.y, L.z, misWeight);
+                    printf("Photon:%f,%f,%f,%f,%d,%d\n", L.x, L.y, L.z, misWeight, s, t);
                 }
                 */
 
@@ -381,7 +402,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
+        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
     //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);

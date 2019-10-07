@@ -85,6 +85,8 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         pathStateData[jobIndex].data6 = make_float4(posOnLens, eye_pdf_solid);
         pathStateData[jobIndex].data7 = make_float4(rayDir, __int_as_float(randomWalkRayIdx));
         pathStateData[jobIndex].eye_normal = make_float4(normal, 0.0f);
+
+        s = 0;
     }
 
     if (type != 0)
