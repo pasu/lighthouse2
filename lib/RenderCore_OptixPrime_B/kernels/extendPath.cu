@@ -44,7 +44,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = pass;
+    const uint sampleIndex = pass +(t - 1) * 4 + s;
     y %= scrvsize;
 
     if((type & 0x1) == 0)
@@ -53,7 +53,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         float3 posOnPixel, posOnLens;
         // depth of field camera for no filter
         float r0, r1, r2, r3;
-        if (sampleIndex < 256)
+        if (false && sampleIndex < 256)
         {
             r0 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 4);
             r1 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 5);
@@ -138,9 +138,11 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         throughput = beta;
         pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
 
+        float test = pdf_solidangle;
+
         float3 R;
         float r4, r5;
-        if (sampleIndex < 256)
+        if (false && sampleIndex < 256)
         {
             r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 4);
             r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 5);
@@ -171,6 +173,11 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
         randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
 
+        if (jobIndex == probePixelIdx)
+        {
+            //printf("inv_pdf_area:%f\n", 1.0f / pdf_area);
+        }
+
         if (type == 1) // eye path
         {
             s++;
@@ -181,7 +188,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
                 counters->probedTriid = primIdx,		// record primitive id at the selected pixel
                 counters->probedDist = HIT_T;			// record primary ray hit distance
 
-            float dE = 1.0f / pdf_area;
+            float dE = 1.0f / pdf_area; // N0k
             if (s > 1)
             {
                 float3 light_pos = make_float3(pathStateData[jobIndex].data2);
@@ -193,7 +200,11 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
                 float3 normal = make_float3(pathStateData[jobIndex].eye_normal);
                 float light_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
 
-                dE = (1.0f + light_p * d) / pdf_area;
+
+                dE = (1.0f / pdf_area + d) ;
+
+                //dE = (1.0f + light_p * d) / pdf_area;
+                
             }
 
             pathStateData[jobIndex].data4 = make_float4(throughput,dE);
@@ -216,7 +227,16 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
 
             float3 normal = make_float3(pathStateData[jobIndex].light_normal);
             float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
-            float dL = (1.0f + eye_p * d) / pdf_area;
+            //float dL = (1.0f + eye_p * d) / pdf_area;
+            float dL = (1.0f / pdf_area + d);
+
+            /*
+            if (jobIndex == probePixelIdx)
+            {
+                printf("fabs(dot(normal, dir)):%f\ntest:%f\n", fabs(dot(normal, dir))*INVPI, test);
+                printf("dE:%f,%d,%d,%f,%f\n", dL, s, t, eye_p, pdf_area);
+            }
+            */
 
             pathStateData[jobIndex].data0 = make_float4(throughput, dL);
             pathStateData[jobIndex].data1 = make_float4(beta, pdf_area);
