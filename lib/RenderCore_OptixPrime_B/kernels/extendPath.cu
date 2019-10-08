@@ -201,9 +201,9 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
                 float light_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
 
 
-                dE = (1.0f / pdf_area + d) ;
+                //dE = (1.0f / pdf_area + d) ;
 
-                //dE = (1.0f + light_p * d) / pdf_area;
+                dE = (1.0f + light_p * d) / pdf_area;
                 
             }
 
@@ -227,8 +227,8 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
 
             float3 normal = make_float3(pathStateData[jobIndex].light_normal);
             float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
-            //float dL = (1.0f + eye_p * d) / pdf_area;
-            float dL = (1.0f / pdf_area + d);
+            float dL = (1.0f + eye_p * d) / pdf_area;
+            //float dL = (1.0f / pdf_area + d);
 
             /*
             if (jobIndex == probePixelIdx)
