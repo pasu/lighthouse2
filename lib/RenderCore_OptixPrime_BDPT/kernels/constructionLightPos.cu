@@ -15,6 +15,16 @@
 
 #include "noerrors.h"
 
+//  +-----------------------------------------------------------------------------+
+//  |  getPathInfo                                                          |
+//  |  get the path info from path_s_t_type_pass.                     LH2'19|
+//  +-----------------------------------------------------------------------------+
+/* 
+    pass: the sample number of current pixel, [0, 2^19-1]
+    s   : the length of eye path, [0, 31]
+    t   : the length of light path, [0, 31]
+    type: the type of extend path, 0: create new path; 1: extend eye path; 2: extend light path
+*/
 LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s, uint& t, uint& type)
 {
     pass = (path_s_t_type_pass & 524287);
@@ -26,8 +36,8 @@ LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s
 }
 
 //  +-----------------------------------------------------------------------------+
-//  |  generateEyeRaysKernel                                                      |
-//  |  Generate primary rays, to be traced by Optix Prime.                  LH2'19|
+//  |  constructionLightPosKernel                                                      |
+//  |  Generate the first vertex of the light path including pos and direction.                  LH2'19|
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
 void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, 
@@ -53,6 +63,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
     const uint sampleIndex = sampleIdx * 12 + (t - 1) * 3 + s;
 
+    /*
     if (jobIndex == probePixelIdx)
     {
         uint pass, eye, light, c;
@@ -66,7 +77,8 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
         //float4 color = accumulatorOnePass[jobIndex];
         //printf("%f,%f,%f,%d,%d,%d\n", color.x, color.y, color.z, eye,light, sampleIdx);
     }
-    
+    */
+
     accumulator[jobIndex] += accumulatorOnePass[jobIndex];
     accumulator[jobIndex].w = sampleIdx;
     accumulatorOnePass[jobIndex] = make_float4(0.0f);
@@ -74,20 +86,21 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
     float r0,r1,r2,r3;
 
+    /* blue Noise is bad here
     if (false && sampleIdx < 256)
     {
         r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
         r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
         r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
         r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
-        /*
+
         if (jobIndex == probePixelIdx)
         {
             printf("sampleIdx:%d,r0:%f,r1:%f,r2:%f,r3:%f\n", sampleIdx,r0, r1, r2, r3);
         }
-        */
     }
     else
+    */
     {
         uint seed = WangHash(jobIndex + R0);
 
@@ -100,12 +113,15 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     float3 normal, throughput, lightDir;
     float lightPdf, pdfPos, pdfDir ;
 
+    // get the pos and direction of the light source with pos pdf and dir pdf
     float3 pos = Sample_Le(r0, r1, r2, r3, normal, lightDir, throughput, lightPdf, pdfPos, pdfDir);
 
     // PBR book equation [16.15]
     float3 beta = throughput * fabs(dot(normal, lightDir)) / (lightPdf * pdfPos * pdfDir);
 
+    // area pdf
     float light_p = lightPdf * pdfPos;
+    // dL Recursive MIS Equation [14]
     float dL = NKK / light_p;
     float light_pdf_solid = pdfDir;
 

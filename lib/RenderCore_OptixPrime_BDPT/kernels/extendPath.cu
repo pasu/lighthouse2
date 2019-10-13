@@ -39,8 +39,8 @@ __inline __device__ float3 RandomPointOnLens(const float r0, float r1, const flo
 }
 
 //  +-----------------------------------------------------------------------------+
-//  |  generateEyeRaysKernel                                                      |
-//  |  Generate primary rays, to be traced by Optix Prime.                  LH2'19|
+//  |  extendPathKernel                                                      |
+//  |  extend eye path or light path.                                  LH2'19|
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
 void extendPathKernel( int smcount, BiPathState* pathStateData,
@@ -83,6 +83,7 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
             r0 = RandomFloat(seed), r1 = RandomFloat(seed);
             r2 = RandomFloat(seed), r3 = RandomFloat(seed);
         }
+
         posOnPixel = p1 + ((float)x + r0) * (right / (float)scrhsize) + ((float)y + r1) * (up / (float)scrvsize);
         posOnLens = RandomPointOnLens(r2, r3, cam_pos, aperture, right, up);
         const float3 rayDir = normalize(posOnPixel - posOnLens);
