@@ -67,7 +67,7 @@ void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pat
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    Ray4* photomappingRays, uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos);
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos);
 void finalizeRender_BDPT(const float4* accumulator, 
     const int w, const int h, const float brightness, const float contrast);
 //////////////////////////////////////////
@@ -162,7 +162,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 	// synchronize OpenGL viewport
 	scrwidth = target->width;
 	scrheight = target->height;
-	scrspp = spp;
+	scrspp = 1;
 	renderTarget.SetTexture( target );
 	bool firstFrame = (maxPixels == 0);
 	// notify CUDA about the texture
@@ -181,32 +181,15 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		// destroy previously created OptiX buffers
 		if (!firstFrame)
 		{
-			rtpBufferDescDestroy( extensionRaysDesc[0] );
-			rtpBufferDescDestroy( extensionRaysDesc[1] );
-			rtpBufferDescDestroy( extensionHitsDesc );
-			rtpBufferDescDestroy( shadowRaysDesc );
-			rtpBufferDescDestroy( shadowHitsDesc );
-
             //BDPT
             //////////////////////////
             rtpBufferDescDestroy(visibilityRaysDesc);
             rtpBufferDescDestroy(visibilityHitsDesc);
             rtpBufferDescDestroy(randomWalkRaysDesc);
             rtpBufferDescDestroy(randomWalkHitsDesc);
-
-            rtpBufferDescDestroy(photomappingRaysDesc);
-            rtpBufferDescDestroy(photomappingHitsDesc);
             /////////////////////////
 		}
 		// delete CoreBuffers
-		delete extensionRayBuffer[0];
-		delete extensionRayBuffer[1];
-		delete extensionRayExBuffer[0];
-		delete extensionRayExBuffer[1];
-		delete extensionHitBuffer;
-		delete shadowRayBuffer;
-		delete shadowRayPotential;
-		delete shadowHitBuffer;
 		delete accumulator;
         delete accumulatorOnePass;
         delete weightMeasureBuffer;
@@ -218,29 +201,11 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         delete visibilityHitBuffer;
         delete randomWalkRayBuffer;
         delete randomWalkHitBuffer;
-
-        delete photomappingRayBuffer;
-        delete photomappingHitBuffer;
         /////////////////////////////
 
-		const uint maxShadowRays = maxPixels * spp * MAXPATHLENGTH; // upper limit; safe but wasteful
-// 		extensionHitBuffer = new CoreBuffer<Intersection>( maxPixels * spp, ON_DEVICE );
-// 		shadowRayBuffer = new CoreBuffer<Ray4>( maxShadowRays, ON_DEVICE );
-// 		shadowRayPotential = new CoreBuffer<float4>( maxShadowRays, ON_DEVICE ); // .w holds pixel index
-// 		shadowHitBuffer = new CoreBuffer<uint>( (maxShadowRays + 31) >> 5 /* one bit per ray */, ON_DEVICE );
- 		accumulator = new CoreBuffer<float4>( maxPixels * 2, ON_DEVICE );
+ 		accumulator = new CoreBuffer<float4>( maxPixels, ON_DEVICE );
         accumulatorOnePass = new CoreBuffer<float4>(maxPixels, ON_DEVICE);
-        weightMeasureBuffer = new CoreBuffer<float4>(maxPixels, ON_DEVICE);
-// 		for (int i = 0; i < 2; i++)
-// 		{
-// 			extensionRayBuffer[i] = new CoreBuffer<Ray4>( maxPixels * spp, ON_DEVICE ),
-// 				extensionRayExBuffer[i] = new CoreBuffer<float4>( maxPixels * 2 * spp, ON_DEVICE );
-// 			CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, extensionRayBuffer[i]->DevPtr(), &extensionRaysDesc[i] ) );
-// 		}
-// 		CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_HIT_T_TRIID_INSTID_U_V, RTP_BUFFER_TYPE_CUDA_LINEAR, extensionHitBuffer->DevPtr(), &extensionHitsDesc ) );
-// 		CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, shadowRayBuffer->DevPtr(), &shadowRaysDesc ) );
-// 		CHK_PRIME( rtpBufferDescCreate( context, RTP_BUFFER_FORMAT_HIT_BITMASK, RTP_BUFFER_TYPE_CUDA_LINEAR, shadowHitBuffer->DevPtr(), &shadowHitsDesc ) );
-        
+        weightMeasureBuffer = new CoreBuffer<float4>(maxPixels, ON_DEVICE);    
         // BDPT
         ///////////////////////////////////////////
         constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
@@ -257,18 +222,12 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkRayBuffer->DevPtr(), &randomWalkRaysDesc));
         randomWalkHitBuffer = new CoreBuffer<Intersection>(maxPixels * 2 * spp, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_T_TRIID_INSTID_U_V, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkHitBuffer->DevPtr(), &randomWalkHitsDesc));
-
-        photomappingRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
-        CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, photomappingRayBuffer->DevPtr(), &photomappingRaysDesc));
-        photomappingHitBuffer = new CoreBuffer<uint>((maxPixels * spp + 31) >> 5, ON_DEVICE);
-        CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_BITMASK, RTP_BUFFER_TYPE_CUDA_LINEAR, photomappingHitBuffer->DevPtr(), &photomappingHitsDesc));
         //////////////////////////////////////////
 		printf( "buffers resized for %i pixels @ %i samples.\n", maxPixels, spp );
 	}
 	// clear the accumulator
-// 	accumulator->Clear( ON_DEVICE );
-//     accumulatorOnePass->Clear(ON_DEVICE);
-	samplesTaken = 0;
+ 	accumulator->Clear( ON_DEVICE );
+    accumulatorOnePass->Clear(ON_DEVICE);
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -513,7 +472,6 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         InitCountersForExtend(scrwidth * scrheight * scrspp);
         InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
 
-		samplesTaken = 0;
 		camRNGseed = 0x12345678; // same seed means same noise.
 	}
 
@@ -563,84 +521,73 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     float3 right = view.p2 - view.p1, up = view.p3 - view.p1;
     float3 forward = cross(right, up);
 	// render image
-    RTPquery queryVisibility,queryRandomWalk, photomappingV;
+    RTPquery queryVisibility,queryRandomWalk;
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
-    CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &photomappingV));
 
-    //for (int i =0;i<256;i++)
+    for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
     {
-        for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
-        {
-//             constructLightBuffer->CopyToHost();
-//             uint* index = constructLightBuffer->HostPtr();
-// 
-//             accumulatorOnePass->CopyToHost();
-//             float4* color = accumulatorOnePass->HostPtr();
+        //             constructLightBuffer->CopyToHost();
+        //             uint* index = constructLightBuffer->HostPtr();
+        // 
+        //             accumulatorOnePass->CopyToHost();
+        //             float4* color = accumulatorOnePass->HostPtr();
 
-            constructionLightPos(lightCount, NKK,
-                constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
-                RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
-                randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), accumulator->DevPtr(),
-                weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y);
+        constructionLightPos(lightCount, NKK,
+            constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
+            RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
+            randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), accumulator->DevPtr(),
+            weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y);
 
-            pathDataBuffer->CopyToHost();
-            BiPathState* state = pathDataBuffer->HostPtr();
+        pathDataBuffer->CopyToHost();
+        BiPathState* state = pathDataBuffer->HostPtr();
 
-            extendPath(pathCount, pathDataBuffer->DevPtr(),
-                visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
-                RandomUInt(camRNGseed), blueNoise->DevPtr(),
-                view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams(),
-                probePos.x + scrwidth * probePos.y);
+        extendPath(pathCount, pathDataBuffer->DevPtr(),
+            visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
+            RandomUInt(camRNGseed), blueNoise->DevPtr(),
+            view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams(),
+            probePos.x + scrwidth * probePos.y);
 
-            counterBuffer->CopyToHost();
-            Counters& counters = counterBuffer->HostPtr()[0];
-            
-            CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
-            CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
-            CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
-            CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
-            CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
+        counterBuffer->CopyToHost();
+        Counters& counters = counterBuffer->HostPtr()[0];
 
-            CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, counters.randomWalkRays));
-            CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, counters.randomWalkRays));
-            CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
-            CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
-            CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
+        CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
+        CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
+        CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
+        CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
+        CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
 
-            InitCountersForExtend(0);
+        CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, counters.randomWalkRays));
+        CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, counters.randomWalkRays));
+        CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
+        CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
+        CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
 
-            float scene_area = 5989.0f;
-            connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
-                visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
-                view.focalDistance, view.p1, right, up,
-                view.spreadAngle, accumulatorOnePass->DevPtr(), accumulator->DevPtr(), constructLightBuffer->DevPtr(),
-                weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y, 
-                GetScreenParams(),photomappingRayBuffer->DevPtr(),photomappingIdx->DevPtr(),
-                photomapping->DevPtr(),view.pos);
+        InitCountersForExtend(0);
 
-            counterBuffer->CopyToHost();
-           counters = counterBuffer->HostPtr()[0];
+        float scene_area = 5989.0f;
+        connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
+            visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
+            view.focalDistance, view.p1, right, up,
+            view.spreadAngle, accumulatorOnePass->DevPtr(), accumulator->DevPtr(), constructLightBuffer->DevPtr(),
+            weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y,
+            GetScreenParams(),photomappingIdx->DevPtr(),
+            photomapping->DevPtr(), view.pos);
 
-            CHK_PRIME(rtpBufferDescSetRange(photomappingRaysDesc, 0, counters.photomappings));
-            CHK_PRIME(rtpBufferDescSetRange(photomappingHitsDesc, 0, counters.photomappings));
-            CHK_PRIME(rtpQuerySetRays(photomappingV, photomappingRaysDesc));
-            CHK_PRIME(rtpQuerySetHits(photomappingV, photomappingHitsDesc));
-            CHK_PRIME(rtpQueryExecute(photomappingV, RTP_QUERY_HINT_NONE));
+        counterBuffer->CopyToHost();
+        counters = counterBuffer->HostPtr()[0];
 
-            coreStats.probedInstid = counters.probedInstid;
-            coreStats.probedTriid = counters.probedTriid;
-            coreStats.probedDist = counters.probedDist;
-        }
-
-        renderTarget.BindSurface();
-        finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
-        renderTarget.UnbindSurface();
+        coreStats.probedInstid = counters.probedInstid;
+        coreStats.probedTriid = counters.probedTriid;
+        coreStats.probedDist = counters.probedDist;
     }
+
+    renderTarget.BindSurface();
+    finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
+    renderTarget.UnbindSurface();
 
     CHK_PRIME(rtpQueryDestroy(queryVisibility));
     CHK_PRIME(rtpQueryDestroy(queryRandomWalk));    
-    CHK_PRIME(rtpQueryDestroy(photomappingV));
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -650,16 +597,18 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 void RenderCore::Shutdown()
 {
 	// delete ray buffers
-	delete extensionRayBuffer[0];
-	delete extensionRayBuffer[1];
-	delete extensionRayExBuffer[0];
-	delete extensionRayExBuffer[1];
-	delete extensionHitBuffer;
-	delete shadowRayBuffer;
-	delete shadowRayPotential;
-	delete shadowHitBuffer;
+    delete weightMeasureBuffer;
+    delete constructLightBuffer;
+    delete pathDataBuffer;
+    delete visibilityRayBuffer;
+    delete visibilityHitBuffer;
+    delete randomWalkRayBuffer;
+    delete randomWalkHitBuffer;
+    delete photomapping;
+    delete photomappingIdx;
 	// delete internal data
 	delete accumulator;
+    delete accumulatorOnePass;
 	delete counterBuffer;
 	delete texDescs;
 	delete texel32Buffer;
@@ -678,9 +627,10 @@ void RenderCore::Shutdown()
 	for (auto mesh : meshes) delete mesh;
 	for (auto instance : instances) delete instance;
 	delete topLevel;
-	rtpBufferDescDestroy( extensionRaysDesc[0] );
-	rtpBufferDescDestroy( extensionRaysDesc[1] );
-	rtpBufferDescDestroy( extensionHitsDesc );
+	rtpBufferDescDestroy(visibilityRaysDesc );
+	rtpBufferDescDestroy(visibilityHitsDesc );
+	rtpBufferDescDestroy(randomWalkRaysDesc);
+    rtpBufferDescDestroy(randomWalkHitsDesc);
 	rtpContextDestroy( context );
 }
 

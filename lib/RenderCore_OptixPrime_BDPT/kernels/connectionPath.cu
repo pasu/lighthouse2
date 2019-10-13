@@ -88,7 +88,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    Ray4* photomappingRays, uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
@@ -375,10 +375,6 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
                 photomappingBuffer[pm_idx] = make_float4(L, __int_as_float(idx));
 
-                photomappingRays[pm_idx].O4 = make_float4(SafeOrigin(camPos, light2eye * -1.0f, 
-                    normalize(forward), geometryEpsilon), 0);
-                photomappingRays[pm_idx].D4 = make_float4(light2eye * -1.0f, length_l2e - 2 * geometryEpsilon);
-                
                 /*
                 if (idx == probePixelIdx)
                 {
@@ -505,14 +501,14 @@ __host__ void connectionPath(int smcount, float NKK, float scene_area, BiPathSta
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    Ray4* photomappingRays, uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, pathStateBuffer,
         randomWalkHitBuffer,visibilityHitBuffer, aperture, imgPlaneSize,
         forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, accumulator, constructLightBuffer,
         weightMeasureBuffer, probePixelIdx, screenParams,
-        photomappingRays, photomappingIdx, photomappingBuffer, camPos);
+        photomappingIdx, photomappingBuffer, camPos);
 }
 
 // EOF

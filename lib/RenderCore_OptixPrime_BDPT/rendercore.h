@@ -72,7 +72,7 @@ private:
 	void SyncStorageType( const TexelStorage storage );
 	// data members
 	int scrwidth = 0, scrheight = 0;				// current screen width and height
-	int scrspp = 1;									// samples to be taken per screen pixel
+    int scrspp = 1;									// samples to be taken per screen pixel
 	int skywidth = 0, skyheight = 0;				// size of the skydome texture
 	int maxPixels = 0;								// max screen size buffers can accomodate without a realloc
 	int currentSPP = 0;								// spp count which will be accomodated without a realloc
@@ -117,32 +117,11 @@ private:
 
     CoreBuffer<float4>* photomapping = 0;
     CoreBuffer<uint>* photomappingIdx = 0;
-
-    CoreBuffer<Ray4>* photomappingRayBuffer = 0;
-    CoreBuffer<uint>* photomappingHitBuffer = 0;
-    RTPbufferdesc photomappingRaysDesc;				// buffer descriptor for extension rays
-    RTPbufferdesc photomappingHitsDesc;
     ///////////////////////////////
-	
-    CoreBuffer<float4>* extensionRayExBuffer[2] = { 0, 0 };	// additional path state data
-
-	CoreBuffer<Ray4>* extensionRayBuffer[2] = { 0, 0 }; // buffer for OptiX extension ray data
-	CoreBuffer<Intersection>* extensionHitBuffer = 0; // buffer for OptiX intersection results
-    RTPbufferdesc extensionRaysDesc[2];				// buffer descriptor for extension rays
-    RTPbufferdesc extensionHitsDesc;				// buffer descriptor for extension ray hits
-
-	CoreBuffer<Ray4>* shadowRayBuffer = 0;			// buffer for OptiX shadow ray data
-    CoreBuffer<uint>* shadowHitBuffer = 0;			// buffer for OptiX intersection results, 1 bit per shadow ray
-    RTPbufferdesc shadowRaysDesc;					// buffer descriptor for shadow rays
-    RTPbufferdesc shadowHitsDesc;					// buffer descriptor for shadow ray hits
-
-	CoreBuffer<float4>* shadowRayPotential = 0;		// potential throughput for shadow rays
-
 	CoreTexDesc* texDescs = 0;						// array of texture descriptors
 	int textureCount = 0;							// size of texture descriptor array
 	int SMcount = 0;								// multiprocessor count, used for persistent threads
 	int computeCapability;							// device compute capability
-	int samplesTaken = 0;							// number of accumulated samples in accumulator
 	int inBuffer = 0, outBuffer = 1;				// extension ray buffers are double buffered
 	uint camRNGseed = 0x12345678;					// seed for the RNG that feeds the renderer
 	uint seed = 0x23456789;							// generic seed
