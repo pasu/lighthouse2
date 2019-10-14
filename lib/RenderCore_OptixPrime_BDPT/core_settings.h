@@ -126,10 +126,7 @@ struct Counters
 
     uint visibilityRays;
     uint randomWalkRays;
-	uint extensionRays;
-	uint shadowRays;
-	uint totalExtensionRays;
-	uint totalShadowRays;
+	
     uint photomappings;
 	int probedInstid;
 	int probedTriid;

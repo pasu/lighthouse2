@@ -40,6 +40,15 @@
     <CudaCompile Include="kernels\extendLightPath.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
+    <CudaCompile Include="kernels\connectionPath_Emissive.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="kernels\connectionPath_Explicit.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="kernels\connectionPath_Connection.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\CUDA\shared_host_code\interoptexture.cpp" />

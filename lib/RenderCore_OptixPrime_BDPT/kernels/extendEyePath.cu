@@ -104,11 +104,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
     randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
 
-    if (jobIndex == probePixelIdx)
-    {
-        //printf("inv_pdf_area:%f\n", 1.0f / pdf_area);
-    }
-
     s++;
 
     // the ray is from eye to the pixel directly
@@ -157,6 +152,22 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
     visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+
+    if (shadingData.IsEmissive())
+    {
+        const uint emissiveIdx = atomicAdd(&counters->contribution_emissive, 1);
+        contributionBuffer_Emissive[emissiveIdx] = jobIndex;
+    }
+    else if (t == 1)
+    {
+        const uint explicitIdx = atomicAdd(&counters->contribution_explicit, 1);
+        contributionBuffer_Explicit[explicitIdx] = jobIndex;
+    }
+    else
+    {
+        const uint connectionIdx = atomicAdd(&counters->contribution_connection, 1);
+        contributionBuffer_Connection[connectionIdx] = jobIndex;
+    }
 }
 
 //  +-----------------------------------------------------------------------------+

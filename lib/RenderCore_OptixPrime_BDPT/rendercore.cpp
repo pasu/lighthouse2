@@ -29,7 +29,7 @@ namespace lh2core
 // forward declaration of cuda code
 const surfaceReference* renderTargetRef();
 void InitCountersForExtend( int pathCount );
-void InitCountersSubsequent();
+void InitContributions();
 
 // setters / getters
 void SetInstanceDescriptors( CoreInstanceDesc* p );
@@ -76,6 +76,22 @@ void extendPath(int pathCount, BiPathState* pathStateBuffer,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
     const float3 right, const float3 up, const float3 forward, const float3 p1, const float spreadAngle,
     const int4 screenParams, const int probePixelIdx);
+
+void connectionPath_Emissive(int smcount, float NKK, BiPathState* pathStateData,
+    const float spreadAngle, float4* accumulatorOnePass,
+    float4* weightMeasureBuffer, const int4 screenParams,
+    uint* contributionBuffer_Emissive);
+
+void connectionPath_Explicit(int smcount, BiPathState* pathStateData,
+    uint* visibilityHitBuffer, const float spreadAngle,
+    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    const int4 screenParams, uint* contributionBuffer_Explicit);
+
+void connectionPath_Connection(int smcount, BiPathState* pathStateData,
+    uint* visibilityHitBuffer, const float spreadAngle,
+    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    const int4 screenParams, uint* contributionBuffer_Connection);
+
 void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pathStateBuffer,
     const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
     const float aperture, const float imgPlaneSize, const float3 forward, 
@@ -619,6 +635,20 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
         CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
 
+        connectionPath_Emissive(pathCount, NKK,pathDataBuffer->DevPtr(),
+            view.spreadAngle,accumulatorOnePass->DevPtr(),weightMeasureBuffer->DevPtr(),
+            GetScreenParams(),contributionBuffer_Emissive->DevPtr());
+
+        connectionPath_Explicit(pathCount, pathDataBuffer->DevPtr(),
+            visibilityHitBuffer->DevPtr(), view.spreadAngle, 
+            accumulatorOnePass->DevPtr(), weightMeasureBuffer->DevPtr(),
+            GetScreenParams(),contributionBuffer_Explicit->DevPtr());
+
+        connectionPath_Connection(pathCount, pathDataBuffer->DevPtr(),
+            visibilityHitBuffer->DevPtr(), view.spreadAngle,
+            accumulatorOnePass->DevPtr(), weightMeasureBuffer->DevPtr(),
+            GetScreenParams(), contributionBuffer_Connection->DevPtr());
+
         InitCountersForExtend(0);
 
         float scene_area = 5989.0f;
@@ -636,6 +666,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         coreStats.probedInstid = counters.probedInstid;
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
+
+        //InitContributions();
     }
 
     renderTarget.BindSurface();

@@ -94,15 +94,20 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
     counters->randomWalkRays = 0;
     counters->visibilityRays = 0;
 
-    counters->extensionRays = 0;		// compaction counter for extension rays
-    counters->shadowRays = 0;			// compaction counter for connections
-    counters->totalExtensionRays = pathCount;
-    counters->totalShadowRays = 0;
-
     counters->photomappings = 0;
 }
 __host__ void InitCountersForExtend( int pathCount ) { InitCountersForExtend_Kernel << <1, 32 >> > (pathCount); }
 
+__global__ void InitContributions_Kernel()
+{
+    if (threadIdx.x != 0) return;
+
+    counters->contribution_emissive = 0;
+    counters->contribution_explicit = 0;
+    counters->contribution_connection = 0;
+}
+
+__host__ void InitContributions() { InitContributions_Kernel << <1, 32 >> > (); }
 __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, sizeof( void* ) ); }
 
 // functional blocks
@@ -117,7 +122,10 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 
 #include "extendEyePath.cu"
 #include "extendLightPath.cu"
-//#include "extendPath.cu"
+
+#include "connectionPath_Emissive.cu"
+#include "connectionPath_Explicit.cu"
+#include "connectionPath_Connection.cu"
 
 #include "connectionPath.cu"
 } // namespace lh2core
