@@ -87,7 +87,7 @@ void connectionPath_PhotonKernel(int smcount, BiPathState* pathStateData,
     const float3 forward, const float focalDistance, const float3 p1, 
     const float3 right, const float3 up, const float spreadAngle, 
     float4* accumulatorOnePass, const int4 screenParams,
-    float4* photomappingBuffer, const float3 camPos, 
+    const float3 camPos, 
     uint* contributionBuffer_Photon )
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -171,8 +171,6 @@ void connectionPath_PhotonKernel(int smcount, BiPathState* pathStateData,
             atomicAdd(&(accumulatorOnePass[idx].w), res_color.w);
 
             const uint pm_idx = atomicAdd(&counters->photomappings, 1);
-
-            photomappingBuffer[pm_idx] = make_float4(L, __int_as_float(idx));
         }
     }    
 }
@@ -186,14 +184,14 @@ __host__ void connectionPath_Photon(int smcount, BiPathState* pathStateData,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up, const float spreadAngle,
     float4* accumulatorOnePass, const int4 screenParams,
-    float4* photomappingBuffer, const float3 camPos,
+    const float3 camPos,
     uint* contributionBuffer_Photon)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPath_PhotonKernel << < gridDim.x, 256 >> > (smcount, pathStateData,
         visibilityHitBuffer, aperture, imgPlaneSize,
         forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, 
-        screenParams, photomappingBuffer, camPos, contributionBuffer_Photon);
+        screenParams, camPos, contributionBuffer_Photon);
 }
 
 // EOF

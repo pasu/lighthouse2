@@ -28,7 +28,7 @@ __global__  __launch_bounds__( 256 , 1 )
 void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass, uint* constructLightBuffer,
-    float4* weightMeasureBuffer, const int4 screenParams,
+    const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
@@ -150,13 +150,13 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 __host__ void connectionPath(int smcount, float NKK, float scene_area, 
     BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass, uint* constructLightBuffer,
-    float4* weightMeasureBuffer, const int4 screenParams,
+    const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, 
         pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
-        constructLightBuffer, weightMeasureBuffer, screenParams,
+        constructLightBuffer, screenParams,
         constructEyeBuffer, eyePathBuffer, lightPathBuffer);
 }
 

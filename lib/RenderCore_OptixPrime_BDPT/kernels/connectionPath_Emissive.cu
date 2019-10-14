@@ -27,7 +27,7 @@
 __global__  __launch_bounds__( 256 , 1 )
 void connectionPath_EmissiveKernel(int smcount, float NKK, BiPathState* pathStateData,
     const float spreadAngle, float4* accumulatorOnePass,
-    float4* weightMeasureBuffer, const int4 screenParams,
+    const int4 screenParams,
     uint* contributionBuffer_Emissive)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -79,7 +79,6 @@ void connectionPath_EmissiveKernel(int smcount, float NKK, BiPathState* pathStat
     const float p_rev = pickProb * pdfPos; // surface area
 
     misWeight = 1.0f / (dE * p_rev + NKK);
-    weightMeasureBuffer[jobIndex].x += misWeight;
     
     accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
 }
@@ -90,12 +89,12 @@ void connectionPath_EmissiveKernel(int smcount, float NKK, BiPathState* pathStat
 //  +-----------------------------------------------------------------------------+
 __host__ void connectionPath_Emissive(int smcount, float NKK, BiPathState* pathStateData,
     const float spreadAngle, float4* accumulatorOnePass,
-    float4* weightMeasureBuffer, const int4 screenParams,
+    const int4 screenParams,
     uint* contributionBuffer_Emissive)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPath_EmissiveKernel << < gridDim.x, 256 >> > (smcount, NKK, pathStateData,
-        spreadAngle, accumulatorOnePass,weightMeasureBuffer,screenParams,
+        spreadAngle, accumulatorOnePass,screenParams,
         contributionBuffer_Emissive);
 }
 

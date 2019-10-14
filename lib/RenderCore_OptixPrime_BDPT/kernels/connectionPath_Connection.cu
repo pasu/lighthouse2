@@ -27,7 +27,7 @@
 __global__  __launch_bounds__( 256 , 1 )
 void connectionPath_ConnectionKernel(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer,const float spreadAngle, 
-    float4* accumulatorOnePass, float4* weightMeasureBuffer, 
+    float4* accumulatorOnePass, 
     const int4 screenParams, uint* contributionBuffer_Connection)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -86,13 +86,13 @@ void connectionPath_ConnectionKernel(int smcount, BiPathState* pathStateData,
 
     const int prim_light = __float_as_int(hitData.z);
     const int primIdx_light = prim_light == -1 ? prim_light : (prim_light & 0xfffff);
-    int idx = (primIdx_light >> 20);
+    int idx = (prim_light >> 20);
 
     const CoreTri4* instanceTriangles_eye = (const CoreTri4*)instanceDescriptors[idx].triangles;
 
     ShadingData shadingData_light;
     float3 N_light, iN_light, fN_light, T_light;
-
+    
     GetShadingData(dir_light, HIT_U, HIT_V, coneWidth, instanceTriangles_eye[primIdx_light],
         idx, shadingData_light, N_light, iN_light, fN_light, T_light);
 
@@ -126,7 +126,6 @@ void connectionPath_ConnectionKernel(int smcount, BiPathState* pathStateData,
     float dL = pathStateData[jobIndex].data0.w;
 
     misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-    weightMeasureBuffer[jobIndex].z += misWeight;
 
     if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf)
         || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
@@ -143,12 +142,12 @@ void connectionPath_ConnectionKernel(int smcount, BiPathState* pathStateData,
 //  +-----------------------------------------------------------------------------+
 __host__ void connectionPath_Connection(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
-    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams, uint* contributionBuffer_Connection)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPath_ConnectionKernel << < gridDim.x, 256 >> > (smcount, pathStateData,
-        visibilityHitBuffer,spreadAngle,accumulatorOnePass,weightMeasureBuffer,
+        visibilityHitBuffer,spreadAngle,accumulatorOnePass,
         screenParams,contributionBuffer_Connection);
 }
 

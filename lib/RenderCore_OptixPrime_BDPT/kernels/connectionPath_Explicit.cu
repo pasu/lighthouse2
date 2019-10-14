@@ -27,7 +27,7 @@
 __global__  __launch_bounds__( 256 , 1 )
 void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle, 
-    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams, uint* contributionBuffer_Explicit)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -100,7 +100,6 @@ void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
     float dL = pathStateData[jobIndex].data0.w;
 
     misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-    weightMeasureBuffer[jobIndex].y += misWeight;
 
     if (!occluded)
     {
@@ -121,12 +120,12 @@ void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
 //  +-----------------------------------------------------------------------------+
 __host__ void connectionPath_Explicit(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
-    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams, uint* contributionBuffer_Explicit)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPath_ExplicitKernel << < gridDim.x, 256 >> > (smcount, pathStateData,
-        visibilityHitBuffer,spreadAngle,accumulatorOnePass,weightMeasureBuffer,
+        visibilityHitBuffer,spreadAngle,accumulatorOnePass,
         screenParams,contributionBuffer_Explicit);
 }
 

@@ -55,7 +55,7 @@ void InitIndexForConstructionLight(int pathCount, uint* constructLightBuffer);
 void constructionLightPos(int pathCount, float NKK, uint* constructLightBuffer, 
     BiPathState* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator, 
-    float4* weightMeasureBuffer, const int probePixelIdx, uint* constructEyeBuffer);
+    const int probePixelIdx, uint* constructEyeBuffer);
 void constructionEyePos(int pathCount, uint* constructEyeBuffer,
     BiPathState* pathStateBuffer, Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const float aperture, const float imgPlaneSize, const float3 camPos,
@@ -79,17 +79,17 @@ void extendPath(int pathCount, BiPathState* pathStateBuffer,
 
 void connectionPath_Emissive(int smcount, float NKK, BiPathState* pathStateData,
     const float spreadAngle, float4* accumulatorOnePass,
-    float4* weightMeasureBuffer, const int4 screenParams,
+    const int4 screenParams,
     uint* contributionBuffer_Emissive);
 
 void connectionPath_Explicit(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
-    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams, uint* contributionBuffer_Explicit);
 
 void connectionPath_Connection(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
-    float4* accumulatorOnePass, float4* weightMeasureBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams, uint* contributionBuffer_Connection);
 
 void connectionPath_Photon(int smcount, BiPathState* pathStateData,
@@ -97,13 +97,13 @@ void connectionPath_Photon(int smcount, BiPathState* pathStateData,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up, const float spreadAngle,
     float4* accumulatorOnePass, const int4 screenParams,
-    float4* photomappingBuffer, const float3 camPos,
+    const float3 camPos,
     uint* contributionBuffer_Photon);
 
 void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass, uint* constructLightBuffer,
-    float4* weightMeasureBuffer, const int4 screenParams,
+    const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer);
 
 void finalizeRender_BDPT(const float4* accumulator, 
@@ -253,7 +253,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 
  		accumulator = new CoreBuffer<float4>( maxPixels, ON_DEVICE );
         accumulatorOnePass = new CoreBuffer<float4>(maxPixels, ON_DEVICE);
-        weightMeasureBuffer = new CoreBuffer<float4>(maxPixels, ON_DEVICE);    
+        //weightMeasureBuffer = new CoreBuffer<float4>(maxPixels, ON_DEVICE);    
         // BDPT
         ///////////////////////////////////////////
         constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
@@ -269,8 +269,8 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 
         pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
 
-        photomapping = new CoreBuffer<float4>(maxPixels * spp, ON_DEVICE);
-        photomappingIdx = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+        //photomapping = new CoreBuffer<float4>(maxPixels * spp, ON_DEVICE);
+        //photomappingIdx = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
         
         visibilityRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityRayBuffer->DevPtr(), &visibilityRaysDesc));
@@ -583,7 +583,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
 
-    for (int pathLength = 1; pathLength <= MAXPATHLENGTH; pathLength++)
+    for (int pathLength = 1; pathLength <= 6; pathLength++)
     {
         //             constructLightBuffer->CopyToHost();
         //             uint* index = constructLightBuffer->HostPtr();
@@ -595,9 +595,9 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
             randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), 
-            accumulator->DevPtr(),weightMeasureBuffer->DevPtr(), 
+            accumulator->DevPtr(), 
             probePos.x + scrwidth * probePos.y,constructEyeBuffer->DevPtr());
-
+        counterBuffer->CopyToHost();
 //         pathDataBuffer->CopyToHost();
 //         BiPathState* state = pathDataBuffer->HostPtr();
 
@@ -606,6 +606,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             randomWalkRayBuffer->DevPtr(), RandomUInt(camRNGseed),
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
             GetScreenParams());
+        counterBuffer->CopyToHost();
 
         extendEyePath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -613,6 +614,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
             contributionBuffer_Emissive->DevPtr(),contributionBuffer_Explicit->DevPtr(),
             contributionBuffer_Connection->DevPtr());
+        counterBuffer->CopyToHost();
 
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -645,32 +647,32 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
 
         connectionPath_Emissive(pathCount, NKK,pathDataBuffer->DevPtr(),
-            view.spreadAngle,accumulatorOnePass->DevPtr(),weightMeasureBuffer->DevPtr(),
+            view.spreadAngle,accumulatorOnePass->DevPtr(),
             GetScreenParams(),contributionBuffer_Emissive->DevPtr());
-
+        counterBuffer->CopyToHost();
         connectionPath_Explicit(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle, 
-            accumulatorOnePass->DevPtr(), weightMeasureBuffer->DevPtr(),
+            accumulatorOnePass->DevPtr(), 
             GetScreenParams(),contributionBuffer_Explicit->DevPtr());
-
+        counterBuffer->CopyToHost();
         connectionPath_Connection(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle,
-            accumulatorOnePass->DevPtr(), weightMeasureBuffer->DevPtr(),
+            accumulatorOnePass->DevPtr(), 
             GetScreenParams(), contributionBuffer_Connection->DevPtr());
-
+        counterBuffer->CopyToHost();
         connectionPath_Photon(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
             view.focalDistance, view.p1, right, up,
             view.spreadAngle, accumulatorOnePass->DevPtr(), GetScreenParams(), 
-            photomapping->DevPtr(), view.pos,
+            view.pos,
             contributionBuffer_Photon->DevPtr());
-
+        counterBuffer->CopyToHost();
         InitCountersForExtend(0);
 
         float scene_area = 5989.0f;
         connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
             accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr(),
-            weightMeasureBuffer->DevPtr(), GetScreenParams(), 
+            GetScreenParams(), 
             constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
 
         counterBuffer->CopyToHost();
