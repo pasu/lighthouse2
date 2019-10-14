@@ -114,7 +114,8 @@ struct BiPathState
 // counters and other global data, in device memory
 struct Counters
 {
-	uint activePaths;
+    uint constructionLightPos;
+    uint constructionEyePos;
     uint visibilityRays;
     uint randomWalkRays;
 	uint extensionRays;

@@ -88,7 +88,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos,
+    uint* constructEyeBuffer)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
@@ -455,6 +456,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     else if (light_hit != -1 && t < MAX__LENGTH_L)
     {
         type = 2;
+
+        const uint eyeIdx = atomicAdd(&counters->constructionEyePos, 1);
+        constructEyeBuffer[eyeIdx] = jobIndex;
     }
     else
     {
@@ -501,14 +505,14 @@ __host__ void connectionPath(int smcount, float NKK, float scene_area, BiPathSta
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos)
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, uint* constructEyeBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, pathStateBuffer,
         randomWalkHitBuffer,visibilityHitBuffer, aperture, imgPlaneSize,
         forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, accumulator, constructLightBuffer,
         weightMeasureBuffer, probePixelIdx, screenParams,
-        photomappingIdx, photomappingBuffer, camPos);
+        photomappingIdx, photomappingBuffer, camPos, constructEyeBuffer);
 }
 
 // EOF

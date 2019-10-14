@@ -82,6 +82,7 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
 	if (threadIdx.x != 0) return;
 
     counters->constructionLightPos = pathCount;	// remaining active paths
+    counters->constructionEyePos = 0;
     counters->randomWalkRays = 0;
     counters->visibilityRays = 0;
 	counters->extensionRays = 0;		// compaction counter for extension rays
@@ -102,6 +103,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "bsdf.cu"
 #include "..\..\CUDA\shared_kernel_code\finalize_shared.cu"
 #include "constructionLightPos.cu"
+#include "constructionEyePos.cu"
 #include "extendPath.cu"
 #include "connectionPath.cu"
 } // namespace lh2core

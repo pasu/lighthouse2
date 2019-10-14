@@ -55,7 +55,12 @@ void InitIndexForConstructionLight(int pathCount, uint* constructLightBuffer);
 void constructionLightPos(int pathCount, float NKK, uint* constructLightBuffer, 
     BiPathState* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator, 
-    float4* weightMeasureBuffer, const int probePixelIdx);
+    float4* weightMeasureBuffer, const int probePixelIdx, uint* constructEyeBuffer);
+void constructionEyePos(int pathCount, uint* constructEyeBuffer,
+    BiPathState* pathStateBuffer, Ray4* visibilityRays, Ray4* randomWalkRays,
+    const uint R0, const float aperture, const float imgPlaneSize, const float3 camPos,
+    const float3 right, const float3 up, const float3 forward, const float3 p1,
+    const int4 screenParams);
 void extendPath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
@@ -67,7 +72,7 @@ void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pat
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos);
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, uint* constructEyeBuffer);
 void finalizeRender_BDPT(const float4* accumulator, 
     const int w, const int h, const float brightness, const float contrast);
 //////////////////////////////////////////
@@ -196,6 +201,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         // BDPT
         /////////////////////////////
         delete constructLightBuffer;
+        delete constructEyeBuffer;
         delete pathDataBuffer;
         delete visibilityRayBuffer;
         delete visibilityHitBuffer;
@@ -209,6 +215,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         // BDPT
         ///////////////////////////////////////////
         constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
+        constructEyeBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
         pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
 
         photomapping = new CoreBuffer<float4>(maxPixels * spp, ON_DEVICE);
@@ -536,11 +543,18 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         constructionLightPos(lightCount, NKK,
             constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
-            randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), accumulator->DevPtr(),
-            weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y);
+            randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), 
+            accumulator->DevPtr(),weightMeasureBuffer->DevPtr(), 
+            probePos.x + scrwidth * probePos.y,constructEyeBuffer->DevPtr());
 
-        pathDataBuffer->CopyToHost();
-        BiPathState* state = pathDataBuffer->HostPtr();
+//         pathDataBuffer->CopyToHost();
+//         BiPathState* state = pathDataBuffer->HostPtr();
+
+        constructionEyePos(lightCount, constructEyeBuffer->DevPtr(),
+            pathDataBuffer->DevPtr(), visibilityRayBuffer->DevPtr(),
+            randomWalkRayBuffer->DevPtr(), RandomUInt(camRNGseed),
+            view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
+            GetScreenParams());
 
         extendPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -572,7 +586,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             view.spreadAngle, accumulatorOnePass->DevPtr(), accumulator->DevPtr(), constructLightBuffer->DevPtr(),
             weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y,
             GetScreenParams(),photomappingIdx->DevPtr(),
-            photomapping->DevPtr(), view.pos);
+            photomapping->DevPtr(), view.pos, constructEyeBuffer->DevPtr());
 
         counterBuffer->CopyToHost();
         counters = counterBuffer->HostPtr()[0];

@@ -43,7 +43,7 @@ __global__  __launch_bounds__( 256 , 1 )
 void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator,
-    float4* weightMeasureBuffer, const int probePixelIdx)
+    float4* weightMeasureBuffer, const int probePixelIdx, uint* constructEyeBuffer)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->constructionLightPos) return;
@@ -139,6 +139,9 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     path_s_t_type_pass = (s << 27) + (t<<22) + (type<<19) + sampleIdx;
 
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
+
+    const uint eyeIdx = atomicAdd(&counters->constructionEyePos, 1);
+    constructEyeBuffer[eyeIdx] = jobIndex;
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -148,12 +151,12 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 __host__ void constructionLightPos( int smcount, float NKK, uint* constructLightBuffer, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator,
-    float4* weightMeasureBuffer, const int probePixelIdx)
+    float4* weightMeasureBuffer, const int probePixelIdx, uint* constructEyeBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, 
         pathStateData, R0, blueNoise, screenParams, randomWalkRays,
-        accumulatorOnePass, accumulator, weightMeasureBuffer,probePixelIdx);
+        accumulatorOnePass, accumulator, weightMeasureBuffer,probePixelIdx, constructEyeBuffer);
 }
 
 // EOF

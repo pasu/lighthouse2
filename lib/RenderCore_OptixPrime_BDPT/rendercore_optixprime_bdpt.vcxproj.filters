@@ -31,6 +31,9 @@
     <CudaCompile Include="..\CUDA\shared_kernel_code\tools_shared.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
+    <CudaCompile Include="kernels\constructionEyePos.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\CUDA\shared_host_code\interoptexture.cpp" />

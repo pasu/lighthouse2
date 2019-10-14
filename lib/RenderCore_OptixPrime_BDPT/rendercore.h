@@ -101,7 +101,8 @@ private:
     // BDPT
     ///////////////////////////
     CoreBuffer<float4>* weightMeasureBuffer = 0;
-    CoreBuffer<uint>* constructLightBuffer = 0; // buffer for OptiX intersection results
+    CoreBuffer<uint>* constructLightBuffer = 0; 
+    CoreBuffer<uint>* constructEyeBuffer = 0;
 
     CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
 

@@ -22,23 +22,6 @@
 #define RAY_O pos
 
 //  +-----------------------------------------------------------------------------+
-//  |  RandomPointOnLens                                                          |
-//  |  Generate a random point on the lens.                                 LH2'19|
-//  +-----------------------------------------------------------------------------+
-__inline __device__ float3 RandomPointOnLens(const float r0, float r1, const float3 pos, const float aperture, const float3 right, const float3 up)
-{
-    const float blade = (int)(r0 * 9);
-    float r2 = (r0 - blade * (1.0f / 9.0f)) * 9.0f;
-    float x1, y1, x2, y2;
-    __sincosf(blade * PI / 4.5f, &x1, &y1);
-    __sincosf((blade + 1.0f) * PI / 4.5f, &x2, &y2);
-    if ((r1 + r2) > 1) r1 = 1.0f - r1, r2 = 1.0f - r2;
-    const float xr = x1 * r1 + x2 * r2;
-    const float yr = y1 * r1 + y2 * r2;
-    return pos + aperture * (right * xr + up * yr);
-}
-
-//  +-----------------------------------------------------------------------------+
 //  |  extendPathKernel                                                      |
 //  |  extend eye path or light path.                                  LH2'19|
 //  +-----------------------------------------------------------------------------+
@@ -63,49 +46,6 @@ void extendPathKernel( int smcount, BiPathState* pathStateData,
     uint y = jobIndex / scrhsize;
     const uint sampleIndex = (pass-1)*12 +(t - 1) * 3 + s;
     y %= scrvsize;
-
-    if((type & 0x1) == 0)
-    {
-        // get random numbers
-        float3 posOnPixel, posOnLens;
-        // depth of field camera for no filter
-        float r0, r1, r2, r3;
-        if (false && sampleIndex < 256)
-        {
-            r0 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 4);
-            r1 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 5);
-            r2 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 6);
-            r3 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 7);
-        }
-        else
-        {
-            uint seed = WangHash(jobIndex + R0);
-            r0 = RandomFloat(seed), r1 = RandomFloat(seed);
-            r2 = RandomFloat(seed), r3 = RandomFloat(seed);
-        }
-
-        posOnPixel = p1 + ((float)x + r0) * (right / (float)scrhsize) + ((float)y + r1) * (up / (float)scrvsize);
-        posOnLens = RandomPointOnLens(r2, r3, cam_pos, aperture, right, up);
-        const float3 rayDir = normalize(posOnPixel - posOnLens);
-
-        const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
-        randomWalkRays[randomWalkRayIdx].O4 = make_float4(posOnLens, EPSILON);
-        randomWalkRays[randomWalkRayIdx].D4 = make_float4(rayDir, 1e34f);
-
-        float4 value = make_float4(make_float3(1.0f), 0.0f);
-        float3 normal = normalize(forward);
-        float cosTheta = fabs(dot(normal, rayDir));
-
-        float eye_pdf_solid = 1.0f / (imgPlaneSize * cosTheta * cosTheta * cosTheta);
-
-        pathStateData[jobIndex].data4 = value;
-        pathStateData[jobIndex].data5 = value;
-        pathStateData[jobIndex].data6 = make_float4(posOnLens, eye_pdf_solid);
-        pathStateData[jobIndex].data7 = make_float4(rayDir, __int_as_float(randomWalkRayIdx));
-        pathStateData[jobIndex].eye_normal = make_float4(normal, 0.0f);
-
-        s = 0;
-    }
 
     if (type != 0)
     {
