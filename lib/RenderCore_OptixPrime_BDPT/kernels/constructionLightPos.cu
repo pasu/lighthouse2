@@ -46,7 +46,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     float4* weightMeasureBuffer, const int probePixelIdx)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
-    if (gid >= counters->activePaths) return;
+    if (gid >= counters->constructionLightPos) return;
 
     int jobIndex = constructLightBuffer[gid];
 

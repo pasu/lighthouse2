@@ -458,7 +458,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     }
     else
     {
-        const uint constructLight = atomicAdd(&counters->activePaths, 1);
+        const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
         constructLightBuffer[constructLight] = jobIndex;
     }
 

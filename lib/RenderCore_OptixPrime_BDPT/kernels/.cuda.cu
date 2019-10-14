@@ -80,7 +80,8 @@ static __device__ Counters* counters;
 __global__ void InitCountersForExtend_Kernel( int pathCount )
 {
 	if (threadIdx.x != 0) return;
-	counters->activePaths = pathCount;	// remaining active paths
+
+    counters->constructionLightPos = pathCount;	// remaining active paths
     counters->randomWalkRays = 0;
     counters->visibilityRays = 0;
 	counters->extensionRays = 0;		// compaction counter for extension rays
@@ -90,14 +91,7 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
     counters->photomappings = 0;
 }
 __host__ void InitCountersForExtend( int pathCount ) { InitCountersForExtend_Kernel << <1, 32 >> > (pathCount); }
-__global__ void InitCountersSubsequent_Kernel()
-{
-	if (threadIdx.x != 0) return;
-	counters->totalExtensionRays += counters->extensionRays;
-	counters->activePaths = counters->extensionRays;	// remaining active paths
-	counters->extensionRays = 0;		// compaction counter for extension rays
-}
-__host__ void InitCountersSubsequent() { InitCountersSubsequent_Kernel << <1, 32 >> > (); }
+
 __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, sizeof( void* ) ); }
 
 // functional blocks
@@ -106,10 +100,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "..\..\CUDA\shared_kernel_code\material_shared.cu"
 #include "..\..\CUDA\shared_kernel_code\lights_shared.cu"
 #include "bsdf.cu"
-//#include "pathtracer.cu"
 #include "..\..\CUDA\shared_kernel_code\finalize_shared.cu"
-//#include "camera.cu"
-//#include "connections.cu"
 #include "constructionLightPos.cu"
 #include "extendPath.cu"
 #include "connectionPath.cu"
