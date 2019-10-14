@@ -100,14 +100,12 @@ void connectionPath_Photon(int smcount, BiPathState* pathStateData,
     float4* photomappingBuffer, const float3 camPos,
     uint* contributionBuffer_Photon);
 
-void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pathStateBuffer,
-    const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
-    const float aperture, const float imgPlaneSize, const float3 forward, 
-    const float focalDistance, const float3 p1, const float3 right, const float3 up,
-    const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
-    float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, 
+void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
+    const Intersection* randomWalkHitBuffer,
+    float4* accumulatorOnePass, uint* constructLightBuffer,
+    float4* weightMeasureBuffer, const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer);
+
 void finalizeRender_BDPT(const float4* accumulator, 
     const int w, const int h, const float brightness, const float contrast);
 //////////////////////////////////////////
@@ -671,11 +669,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
         float scene_area = 5989.0f;
         connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
-            visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
-            view.focalDistance, view.p1, right, up,
-            view.spreadAngle, accumulatorOnePass->DevPtr(), accumulator->DevPtr(), constructLightBuffer->DevPtr(),
-            weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y,
-            GetScreenParams(),photomappingIdx->DevPtr(), photomapping->DevPtr(), view.pos, 
+            accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr(),
+            weightMeasureBuffer->DevPtr(), GetScreenParams(), 
             constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
 
         counterBuffer->CopyToHost();

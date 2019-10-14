@@ -26,12 +26,9 @@
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
 void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
-    const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
-    const float aperture, const float imgPlaneSize, const float3 forward,
-    const float focalDistance, const float3 p1, const float3 right, const float3 up,
-    const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
-    float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos,
+    const Intersection* randomWalkHitBuffer,
+    float4* accumulatorOnePass, uint* constructLightBuffer,
+    float4* weightMeasureBuffer, const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
@@ -99,7 +96,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         light_hit = primIdx;
     }
 
-    const uint MAX__LENGTH_E = 3;
+    const uint MAX__LENGTH_E = 32;
     const uint MAX__LENGTH_L = 5;
 
     if (eye_hit != -1 && s < MAX__LENGTH_E)
@@ -150,22 +147,17 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 //  |  constructionLightPos                                                            |
 //  |  Entry point for the persistent constructionLightPos kernel.               LH2'19|
 //  +-----------------------------------------------------------------------------+
-__host__ void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateBuffer,
-    const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
-    const float aperture, const float imgPlaneSize, const float3 forward, 
-    const float focalDistance, const float3 p1, const float3 right, const float3 up,
-    const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
-    float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, 
+__host__ void connectionPath(int smcount, float NKK, float scene_area, 
+    BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
+    float4* accumulatorOnePass, uint* constructLightBuffer,
+    float4* weightMeasureBuffer, const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, pathStateBuffer,
-        randomWalkHitBuffer,visibilityHitBuffer, aperture, imgPlaneSize,
-        forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, accumulator, constructLightBuffer,
-        weightMeasureBuffer, probePixelIdx, screenParams,
-        photomappingIdx, photomappingBuffer, camPos, constructEyeBuffer,
-        eyePathBuffer,lightPathBuffer);
+    connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, 
+        pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
+        constructLightBuffer, weightMeasureBuffer, screenParams,
+        constructEyeBuffer, eyePathBuffer, lightPathBuffer);
 }
 
 // EOF
