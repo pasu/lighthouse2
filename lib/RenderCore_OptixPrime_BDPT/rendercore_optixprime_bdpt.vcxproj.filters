@@ -34,6 +34,12 @@
     <CudaCompile Include="kernels\constructionEyePos.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
+    <CudaCompile Include="kernels\extendEyePath.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
+    <CudaCompile Include="kernels\extendLightPath.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\CUDA\shared_host_code\interoptexture.cpp" />

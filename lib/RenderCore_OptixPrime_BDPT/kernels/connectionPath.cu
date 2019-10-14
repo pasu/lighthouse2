@@ -89,7 +89,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
     uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos,
-    uint* constructEyeBuffer)
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
@@ -452,6 +452,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     if (eye_hit != -1 && s < MAX__LENGTH_E)
     {
         type = 1;
+        const uint eyePIdx = atomicAdd(&counters->extendEyePath, 1);
+        eyePathBuffer[eyePIdx] = jobIndex;
     }
     else if (light_hit != -1 && t < MAX__LENGTH_L)
     {
@@ -459,6 +461,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 
         const uint eyeIdx = atomicAdd(&counters->constructionEyePos, 1);
         constructEyeBuffer[eyeIdx] = jobIndex;
+
+        const uint lightPIdx = atomicAdd(&counters->extendLightPath, 1);
+        lightPathBuffer[lightPIdx] = jobIndex;
     }
     else
     {
@@ -484,15 +489,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
-    //accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
-    //type = 0;
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
-
-//    const uint constructLight = atomicAdd(&counters->activePaths, 1);
-//    constructLightBuffer[constructLight] = jobIndex;
-
-//    accumulatorOnePass[jobIndex] = make_float4(1.0, 0.0, 0.0, 1.0);
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -505,14 +503,16 @@ __host__ void connectionPath(int smcount, float NKK, float scene_area, BiPathSta
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, uint* constructEyeBuffer)
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, 
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, pathStateBuffer,
         randomWalkHitBuffer,visibilityHitBuffer, aperture, imgPlaneSize,
         forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, accumulator, constructLightBuffer,
         weightMeasureBuffer, probePixelIdx, screenParams,
-        photomappingIdx, photomappingBuffer, camPos, constructEyeBuffer);
+        photomappingIdx, photomappingBuffer, camPos, constructEyeBuffer,
+        eyePathBuffer,lightPathBuffer);
 }
 
 // EOF

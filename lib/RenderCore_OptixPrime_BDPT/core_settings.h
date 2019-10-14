@@ -116,6 +116,14 @@ struct Counters
 {
     uint constructionLightPos;
     uint constructionEyePos;
+
+    uint extendEyePath;
+    uint extendLightPath;
+
+    uint contribution_emissive;
+    uint contribution_explicit;
+    uint contribution_connection;
+
     uint visibilityRays;
     uint randomWalkRays;
 	uint extensionRays;

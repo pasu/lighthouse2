@@ -61,6 +61,16 @@ void constructionEyePos(int pathCount, uint* constructEyeBuffer,
     const uint R0, const float aperture, const float imgPlaneSize, const float3 camPos,
     const float3 right, const float3 up, const float3 forward, const float3 p1,
     const int4 screenParams);
+void extendEyePath(int pathCount, BiPathState* pathStateBuffer,
+    Ray4* visibilityRays, Ray4* randomWalkRays,
+    const uint R0, const uint* blueNoise, const float spreadAngle,
+    const int4 screenParams, const int probePixelIdx, uint* eyePathBuffer,
+    uint* contributionBuffer_Emissive,uint* contributionBuffer_Explicit, 
+    uint* contributionBuffer_Connection);
+void extendLightPath(int smcount, BiPathState* pathStateBuffer,
+    Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
+    const float3 camPos, const float spreadAngle, 
+    const int4 screenParams, uint* lightPathBuffer);
 void extendPath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
@@ -72,7 +82,8 @@ void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pat
     const float focalDistance, const float3 p1, const float3 right, const float3 up,
     const float spreadAngle, float4* accumulatorOnePass, float4* accumulator, uint* constructLightBuffer,
     float4* weightMeasureBuffer, const int probePixelIdx, const int4 screenParams,
-    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, uint* constructEyeBuffer);
+    uint* photomappingIdx, float4* photomappingBuffer, const float3 camPos, 
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer);
 void finalizeRender_BDPT(const float4* accumulator, 
     const int w, const int h, const float brightness, const float contrast);
 //////////////////////////////////////////
@@ -202,6 +213,14 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         /////////////////////////////
         delete constructLightBuffer;
         delete constructEyeBuffer;
+        
+        delete eyePathBuffer;
+        delete lightPathBuffer;
+
+        delete contributionBuffer_Emissive;
+        delete contributionBuffer_Explicit;
+        delete contributionBuffer_Connection;
+
         delete pathDataBuffer;
         delete visibilityRayBuffer;
         delete visibilityHitBuffer;
@@ -216,6 +235,14 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         ///////////////////////////////////////////
         constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
         constructEyeBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+
+        eyePathBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+        lightPathBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+
+        contributionBuffer_Emissive = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+        contributionBuffer_Explicit = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+        contributionBuffer_Connection = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+
         pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
 
         photomapping = new CoreBuffer<float4>(maxPixels * spp, ON_DEVICE);
@@ -556,11 +583,26 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
             GetScreenParams());
 
+        extendEyePath(pathCount, pathDataBuffer->DevPtr(),
+            visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
+            RandomUInt(camRNGseed), blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
+            probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
+            contributionBuffer_Emissive->DevPtr(),contributionBuffer_Explicit->DevPtr(),
+            contributionBuffer_Connection->DevPtr());
+
+        extendLightPath(pathCount, pathDataBuffer->DevPtr(),
+            visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
+            RandomUInt(camRNGseed), blueNoise->DevPtr(), view.pos,
+            view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr());
+        
+        /*
         extendPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(),
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams(),
             probePos.x + scrwidth * probePos.y);
+        */
+        
 
         counterBuffer->CopyToHost();
         Counters& counters = counterBuffer->HostPtr()[0];
@@ -585,8 +627,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             view.focalDistance, view.p1, right, up,
             view.spreadAngle, accumulatorOnePass->DevPtr(), accumulator->DevPtr(), constructLightBuffer->DevPtr(),
             weightMeasureBuffer->DevPtr(), probePos.x + scrwidth * probePos.y,
-            GetScreenParams(),photomappingIdx->DevPtr(),
-            photomapping->DevPtr(), view.pos, constructEyeBuffer->DevPtr());
+            GetScreenParams(),photomappingIdx->DevPtr(), photomapping->DevPtr(), view.pos, 
+            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
 
         counterBuffer->CopyToHost();
         counters = counterBuffer->HostPtr()[0];
@@ -613,6 +655,9 @@ void RenderCore::Shutdown()
 	// delete ray buffers
     delete weightMeasureBuffer;
     delete constructLightBuffer;
+    delete constructEyeBuffer;
+    delete eyePathBuffer;
+    delete lightPathBuffer;
     delete pathDataBuffer;
     delete visibilityRayBuffer;
     delete visibilityHitBuffer;
