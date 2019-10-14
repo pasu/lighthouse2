@@ -259,7 +259,7 @@ __device__ static float3 EvaluateBSDF( const ShadingData& shadingData, const flo
 
 __device__ static float3 SampleBSDF( const ShadingData& shadingData, 
 	const float3& iN, const float3& N, const float3& T, const float3& wo,
-	const float r3, const float r4, float3& wi, float& pdf )
+	const float r3, const float r4, float3& wi, float& pdf, const int type_)
 {
 	BSDFType type;
 	const float3 B = normalize( cross( T, iN ) );

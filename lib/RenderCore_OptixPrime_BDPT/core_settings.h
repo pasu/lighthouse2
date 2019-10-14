@@ -39,6 +39,10 @@
 #define APPLYSAFENORMALS	if (dot( N, wi ) <= 0) pdf = 0;
 #define NOHIT				-1
 
+#define NEW_PATH            0
+#define EXTEND_EYEPATH      1
+#define EXTEND_LIGHTPATH    2
+
 #ifndef __CUDACC__
 
 #ifdef _DEBUG

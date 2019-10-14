@@ -59,7 +59,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
     uint s = 0;
     uint t = 1;
-    uint type = 0;
+    uint type = NEW_PATH;
     uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
     const uint sampleIndex = sampleIdx * 12 + (t - 1) * 3 + s;
 

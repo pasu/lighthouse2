@@ -96,18 +96,18 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         light_hit = primIdx;
     }
 
-    const uint MAX__LENGTH_E = 32;
+    const uint MAX__LENGTH_E = 3;
     const uint MAX__LENGTH_L = 5;
 
     if (eye_hit != -1 && s < MAX__LENGTH_E)
     {
-        type = 1;
+        type = EXTEND_EYEPATH;
         const uint eyePIdx = atomicAdd(&counters->extendEyePath, 1);
         eyePathBuffer[eyePIdx] = jobIndex;
     }
     else if (light_hit != -1 && t < MAX__LENGTH_L)
     {
-        type = 2;
+        type = EXTEND_LIGHTPATH;
 
         const uint eyeIdx = atomicAdd(&counters->constructionEyePos, 1);
         constructEyeBuffer[eyeIdx] = jobIndex;
@@ -121,7 +121,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         constructLightBuffer[constructLight] = jobIndex;
     }
 
-    if (eye_hit == -1 && type != 2)
+    if (eye_hit == -1 && type != EXTEND_LIGHTPATH)
     {
         float3 hit_dir = make_float3(pathStateData[jobIndex].data7);
         float3 background = make_float3(SampleSkydome(hit_dir, s+1));

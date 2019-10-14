@@ -99,16 +99,6 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
 }
 __host__ void InitCountersForExtend( int pathCount ) { InitCountersForExtend_Kernel << <1, 32 >> > (pathCount); }
 
-__global__ void InitContributions_Kernel()
-{
-    if (threadIdx.x != 0) return;
-
-    counters->contribution_emissive = 0;
-    counters->contribution_explicit = 0;
-    counters->contribution_connection = 0;
-}
-
-__host__ void InitContributions() { InitContributions_Kernel << <1, 32 >> > (); }
 __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, sizeof( void* ) ); }
 
 // functional blocks

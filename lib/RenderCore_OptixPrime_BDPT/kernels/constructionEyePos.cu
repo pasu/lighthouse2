@@ -87,7 +87,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     pathStateData[jobIndex].data7 = make_float4(rayDir, __int_as_float(randomWalkRayIdx));
     pathStateData[jobIndex].eye_normal = make_float4(normal, 0.0f);
 
-    // when type == 2, reset the length of eye path
+    // when type == EXTEND_LIGHTPATH, reset the length of eye path
     s = 0;
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
