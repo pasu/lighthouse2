@@ -90,6 +90,7 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
     counters->contribution_emissive = 0;
     counters->contribution_explicit = 0;
     counters->contribution_connection = 0;
+    counters->contribution_photon = 0;
 
     counters->randomWalkRays = 0;
     counters->visibilityRays = 0;
@@ -126,6 +127,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "connectionPath_Emissive.cu"
 #include "connectionPath_Explicit.cu"
 #include "connectionPath_Connection.cu"
+#include "connectionPath_Photon.cu"
 
 #include "connectionPath.cu"
 } // namespace lh2core

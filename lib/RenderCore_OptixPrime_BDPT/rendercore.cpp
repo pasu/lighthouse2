@@ -69,8 +69,8 @@ void extendEyePath(int pathCount, BiPathState* pathStateBuffer,
     uint* contributionBuffer_Connection);
 void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
-    const float3 camPos, const float spreadAngle, 
-    const int4 screenParams, uint* lightPathBuffer);
+    const float3 camPos, const float spreadAngle,const int4 screenParams, 
+    uint* lightPathBuffer, uint* contributionBuffer_Photon);
 void extendPath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
@@ -91,6 +91,14 @@ void connectionPath_Connection(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
     float4* accumulatorOnePass, float4* weightMeasureBuffer,
     const int4 screenParams, uint* contributionBuffer_Connection);
+
+void connectionPath_Photon(int smcount, BiPathState* pathStateData,
+    uint* visibilityHitBuffer, const float aperture, const float imgPlaneSize,
+    const float3 forward, const float focalDistance, const float3 p1,
+    const float3 right, const float3 up, const float spreadAngle,
+    float4* accumulatorOnePass, const int4 screenParams,
+    float4* photomappingBuffer, const float3 camPos,
+    uint* contributionBuffer_Photon);
 
 void connectionPath(int pathCount, float NKK, float scene_area, BiPathState* pathStateBuffer,
     const Intersection* randomWalkHitBuffer, uint* visibilityHitBuffer,
@@ -236,6 +244,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         delete contributionBuffer_Emissive;
         delete contributionBuffer_Explicit;
         delete contributionBuffer_Connection;
+        delete contributionBuffer_Photon;
 
         delete pathDataBuffer;
         delete visibilityRayBuffer;
@@ -258,6 +267,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         contributionBuffer_Emissive = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
         contributionBuffer_Explicit = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
         contributionBuffer_Connection = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
+        contributionBuffer_Photon = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
 
         pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
 
@@ -609,7 +619,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.pos,
-            view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr());
+            view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr(),
+            contributionBuffer_Photon->DevPtr());
         
         /*
         extendPath(pathCount, pathDataBuffer->DevPtr(),
@@ -648,6 +659,13 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             visibilityHitBuffer->DevPtr(), view.spreadAngle,
             accumulatorOnePass->DevPtr(), weightMeasureBuffer->DevPtr(),
             GetScreenParams(), contributionBuffer_Connection->DevPtr());
+
+        connectionPath_Photon(pathCount, pathDataBuffer->DevPtr(),
+            visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
+            view.focalDistance, view.p1, right, up,
+            view.spreadAngle, accumulatorOnePass->DevPtr(), GetScreenParams(), 
+            photomapping->DevPtr(), view.pos,
+            contributionBuffer_Photon->DevPtr());
 
         InitCountersForExtend(0);
 
@@ -688,8 +706,15 @@ void RenderCore::Shutdown()
     delete weightMeasureBuffer;
     delete constructLightBuffer;
     delete constructEyeBuffer;
+
     delete eyePathBuffer;
     delete lightPathBuffer;
+
+    delete contributionBuffer_Emissive;
+    delete contributionBuffer_Explicit;
+    delete contributionBuffer_Connection;
+    delete contributionBuffer_Photon;
+
     delete pathDataBuffer;
     delete visibilityRayBuffer;
     delete visibilityHitBuffer;

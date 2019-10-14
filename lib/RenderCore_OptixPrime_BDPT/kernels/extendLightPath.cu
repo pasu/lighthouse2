@@ -28,7 +28,8 @@
 __global__  __launch_bounds__( 256 , 1 )
 void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
-    const float3 cam_pos, const float spreadAngle, const int4 screenParams, uint* lightPathBuffer)
+    const float3 cam_pos, const float spreadAngle, const int4 screenParams, 
+    uint* lightPathBuffer, uint* contributionBuffer_Photon)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->extendLightPath) return;
@@ -123,15 +124,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float3 normal = make_float3(pathStateData[jobIndex].light_normal);
     float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
     float dL = (1.0f + eye_p * d) / pdf_area;
-    //float dL = (1.0f / pdf_area + d);
-
-    /*
-    if (jobIndex == probePixelIdx)
-    {
-        printf("fabs(dot(normal, dir)):%f\ntest:%f\n", fabs(dot(normal, dir))*INVPI, test);
-        printf("dE:%f,%d,%d,%f,%f\n", dL, s, t, eye_p, pdf_area);
-    }
-    */
 
     pathStateData[jobIndex].data0 = make_float4(throughput, dL);
     pathStateData[jobIndex].data1 = make_float4(beta, pdf_area);
@@ -152,6 +144,9 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
     visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+
+    const uint photonIdx = atomicAdd(&counters->contribution_photon, 1);
+    contributionBuffer_Photon[photonIdx] = jobIndex;
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -160,12 +155,14 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 //  +-----------------------------------------------------------------------------+
 __host__ void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
-    const float3 camPos,const float spreadAngle, const int4 screenParams,uint* lightPathBuffer)
+    const float3 camPos,const float spreadAngle, const int4 screenParams,
+    uint* lightPathBuffer, uint* contributionBuffer_Photon)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     extendLightPathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
-        R0, blueNoise, camPos, spreadAngle, screenParams, lightPathBuffer);
+        R0, blueNoise, camPos, spreadAngle, screenParams, 
+        lightPathBuffer, contributionBuffer_Photon);
 }
 
 // EOF

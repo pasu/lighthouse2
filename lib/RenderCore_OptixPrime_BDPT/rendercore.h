@@ -110,6 +110,7 @@ private:
     CoreBuffer<uint>* contributionBuffer_Emissive = 0;
     CoreBuffer<uint>* contributionBuffer_Explicit = 0;
     CoreBuffer<uint>* contributionBuffer_Connection = 0;
+    CoreBuffer<uint>* contributionBuffer_Photon = 0;
 
     CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
 

@@ -123,6 +123,7 @@ struct Counters
     uint contribution_emissive;
     uint contribution_explicit;
     uint contribution_connection;
+    uint contribution_photon;
 
     uint visibilityRays;
     uint randomWalkRays;
