@@ -126,11 +126,11 @@ void connectionPath_ConnectionKernel(int smcount, BiPathState* pathStateData,
     float dL = pathStateData[jobIndex].data0.w;
 
     misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-
+    //misWeight = 1.0f;
     if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf)
         || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
     {
-        L = empty_color;
+        misWeight = 0.0f;
     }
             
     accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);

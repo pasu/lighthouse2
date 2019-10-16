@@ -185,7 +185,7 @@ __device__ static float3 BSDFEval( const ShadingData& shadingData,
 __device__ static void BSDFSample( const ShadingData& shadingData,
 	const float3& T, const float3& B, const float3& N, const float3& wo, float3& wi, float& pdf, BSDFType& type, const float r3, const float r4 )
 {
-	if (r3 < TRANSMISSION)
+	if (false && r3 < TRANSMISSION)
 	{
 		// sample BSDF
 		float F = Fr( dot( N, wo ), ETA );

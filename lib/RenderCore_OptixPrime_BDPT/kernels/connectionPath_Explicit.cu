@@ -28,7 +28,8 @@ __global__  __launch_bounds__( 256 , 1 )
 void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle, 
     float4* accumulatorOnePass,
-    const int4 screenParams, uint* contributionBuffer_Explicit)
+    const int4 screenParams, uint* contributionBuffer_Explicit,
+    const int probePixelIdx)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->contribution_explicit) return;
@@ -100,15 +101,22 @@ void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
     float dL = pathStateData[jobIndex].data0.w;
 
     misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-
+    //misWeight = 1.0f;
     if (!occluded)
     {
         L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+        /*
+        if (jobIndex == probePixelIdx)
+        {
+            printf("%f,%f,%f,%f\n", L.x, throughput.x, sampledBSDF.x, (light_throughput * (1.0f / light_pdf)).x);
+        }
+        */
+
     }
 
     if (bsdfPdf < EPSILON || isnan(bsdfPdf))
     {
-        L = empty_color;
+        misWeight = 0.0f;
     }
                 
     accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
@@ -121,12 +129,13 @@ void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
 __host__ void connectionPath_Explicit(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
     float4* accumulatorOnePass,
-    const int4 screenParams, uint* contributionBuffer_Explicit)
+    const int4 screenParams, uint* contributionBuffer_Explicit,
+    const int probePixelIdx)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPath_ExplicitKernel << < gridDim.x, 256 >> > (smcount, pathStateData,
         visibilityHitBuffer,spreadAngle,accumulatorOnePass,
-        screenParams,contributionBuffer_Explicit);
+        screenParams,contributionBuffer_Explicit, probePixelIdx);
 }
 
 // EOF

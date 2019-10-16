@@ -80,8 +80,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     throughput = beta;
     pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
 
-    float test = pdf_solidangle;
-
     float3 R;
     float r4, r5;
 
@@ -97,6 +95,13 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         r5 = RandomFloat(seed);
     }
     const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle, type);
+
+    /*
+    if (jobIndex == probePixelIdx && s == 1)
+    {
+        printf("roughness:%f\n", ROUGHNESS);
+    }
+    */
 
     beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
 

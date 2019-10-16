@@ -96,7 +96,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         light_hit = primIdx;
     }
 
-    const uint MAX__LENGTH_E = 3;
+    const uint MAX__LENGTH_E = 8;
     const uint MAX__LENGTH_L = 5;
 
     if (eye_hit != -1 && s < MAX__LENGTH_E)
@@ -136,7 +136,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
+        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
     }
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;

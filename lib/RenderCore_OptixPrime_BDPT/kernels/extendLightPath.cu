@@ -77,10 +77,13 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     const float coneWidth = spreadAngle * HIT_T;
     GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
 
+    if (shadingData.IsEmissive())
+    {
+        shadingData.color = make_float3(0.0f);
+    }
+
     throughput = beta;
     pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
-
-    float test = pdf_solidangle;
 
     float3 R;
     float r4, r5;
@@ -96,7 +99,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         r5 = RandomFloat(seed);
     }
     const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle,type);
-       
+
     beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
 
     // correct shading normal when it is importance

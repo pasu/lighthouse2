@@ -85,7 +85,8 @@ void connectionPath_Emissive(int smcount, float NKK, BiPathState* pathStateData,
 void connectionPath_Explicit(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
     float4* accumulatorOnePass,
-    const int4 screenParams, uint* contributionBuffer_Explicit);
+    const int4 screenParams, uint* contributionBuffer_Explicit, 
+    const int probePixelIdx);
 
 void connectionPath_Connection(int smcount, BiPathState* pathStateData,
     uint* visibilityHitBuffer, const float spreadAngle,
@@ -98,7 +99,7 @@ void connectionPath_Photon(int smcount, BiPathState* pathStateData,
     const float3 right, const float3 up, const float spreadAngle,
     float4* accumulatorOnePass, const int4 screenParams,
     const float3 camPos,
-    uint* contributionBuffer_Photon);
+    uint* contributionBuffer_Photon, const int probePixelIdx);
 
 void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
@@ -583,7 +584,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
 
-    for (int pathLength = 1; pathLength <= 6; pathLength++)
+    for (int pathLength = 1; pathLength <= 8; pathLength++)
     {
         //             constructLightBuffer->CopyToHost();
         //             uint* index = constructLightBuffer->HostPtr();
@@ -597,7 +598,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), 
             accumulator->DevPtr(), 
             probePos.x + scrwidth * probePos.y,constructEyeBuffer->DevPtr());
-        counterBuffer->CopyToHost();
+        
 //         pathDataBuffer->CopyToHost();
 //         BiPathState* state = pathDataBuffer->HostPtr();
 
@@ -614,7 +615,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
             contributionBuffer_Emissive->DevPtr(),contributionBuffer_Explicit->DevPtr(),
             contributionBuffer_Connection->DevPtr());
-        counterBuffer->CopyToHost();
+        
 
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -645,28 +646,31 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
         CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
         CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
-
+        /**/
         connectionPath_Emissive(pathCount, NKK,pathDataBuffer->DevPtr(),
             view.spreadAngle,accumulatorOnePass->DevPtr(),
             GetScreenParams(),contributionBuffer_Emissive->DevPtr());
-        counterBuffer->CopyToHost();
+        
         connectionPath_Explicit(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle, 
             accumulatorOnePass->DevPtr(), 
-            GetScreenParams(),contributionBuffer_Explicit->DevPtr());
-        counterBuffer->CopyToHost();
+            GetScreenParams(),contributionBuffer_Explicit->DevPtr(),
+            probePos.x + scrwidth * probePos.y);
+        
+        /**/
         connectionPath_Connection(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle,
             accumulatorOnePass->DevPtr(), 
             GetScreenParams(), contributionBuffer_Connection->DevPtr());
-        counterBuffer->CopyToHost();
+        
         connectionPath_Photon(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.aperture, view.imagePlane, forward,
             view.focalDistance, view.p1, right, up,
             view.spreadAngle, accumulatorOnePass->DevPtr(), GetScreenParams(), 
             view.pos,
-            contributionBuffer_Photon->DevPtr());
-        counterBuffer->CopyToHost();
+            contributionBuffer_Photon->DevPtr(),
+            probePos.x + scrwidth * probePos.y);
+        
         InitCountersForExtend(0);
 
         float scene_area = 5989.0f;

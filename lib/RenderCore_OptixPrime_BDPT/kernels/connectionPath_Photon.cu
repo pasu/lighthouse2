@@ -88,7 +88,7 @@ void connectionPath_PhotonKernel(int smcount, BiPathState* pathStateData,
     const float3 right, const float3 up, const float spreadAngle, 
     float4* accumulatorOnePass, const int4 screenParams,
     const float3 camPos, 
-    uint* contributionBuffer_Photon )
+    uint* contributionBuffer_Photon, const int probePixelIdx)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->contribution_photon) return;
@@ -162,8 +162,16 @@ void connectionPath_PhotonKernel(int smcount, BiPathState* pathStateData,
             uint idx = y * scrhsize + x;
 
             L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
-
+            //misWeight = 1.0f;
             float4 res_color = make_float4((L*misWeight), misWeight);
+
+            /*
+            if (idx == probePixelIdx)
+            {
+                printf("%f,%f,%f,%f\n", L.x*misWeight, light_throught.x, sampledBSDF.y, 1.0f/ pdf_eye);
+            }
+            */
+            
 
             atomicAdd(&(accumulatorOnePass[idx].x), res_color.x);
             atomicAdd(&(accumulatorOnePass[idx].y), res_color.y);
@@ -185,13 +193,13 @@ __host__ void connectionPath_Photon(int smcount, BiPathState* pathStateData,
     const float3 right, const float3 up, const float spreadAngle,
     float4* accumulatorOnePass, const int4 screenParams,
     const float3 camPos,
-    uint* contributionBuffer_Photon)
+    uint* contributionBuffer_Photon, const int probePixelIdx)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPath_PhotonKernel << < gridDim.x, 256 >> > (smcount, pathStateData,
         visibilityHitBuffer, aperture, imgPlaneSize,
         forward, focalDistance, p1, right, up, spreadAngle, accumulatorOnePass, 
-        screenParams, camPos, contributionBuffer_Photon);
+        screenParams, camPos, contributionBuffer_Photon, probePixelIdx);
 }
 
 // EOF

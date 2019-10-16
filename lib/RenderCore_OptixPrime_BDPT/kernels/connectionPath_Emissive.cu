@@ -79,8 +79,11 @@ void connectionPath_EmissiveKernel(int smcount, float NKK, BiPathState* pathStat
     const float p_rev = pickProb * pdfPos; // surface area
 
     misWeight = 1.0f / (dE * p_rev + NKK);
+    //misWeight = 1.0f;
     
     accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
+
+    pathStateData[jobIndex].data6.w = 0;
 }
 
 //  +-----------------------------------------------------------------------------+
