@@ -21,6 +21,63 @@
 #define HIT_T hitData.w
 #define RAY_O pos
 
+LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const float3 eye_pos,
+    const float3 forward, const float3 light_pos, const float focalDistance,
+    const float3 p1, const float3 right, const float3 up,
+    float3& throughput, float& pdf, float& u, float& v)
+{
+    throughput = make_float3(0.0f);
+    pdf = 0.0f;
+
+    float3 dir = light_pos - eye_pos;
+    float dist = length(dir);
+
+    dir /= dist;
+
+    float cosTheta = dot(normalize(forward), dir);
+
+    // check direction
+    if (cosTheta <= 0)
+    {
+        return;
+    }
+
+    float x_length = length(right);
+    float y_length = length(up);
+
+    float distance = focalDistance / cosTheta;
+
+    float3 raster_pos = eye_pos + distance * dir;
+    float3 pos2p1 = raster_pos - p1;
+
+    float3 unit_up = up / y_length;
+    float3 unit_right = right / x_length;
+
+    float x_offset = dot(unit_right, pos2p1);
+    float y_offset = dot(unit_up, pos2p1);
+
+    // check view fov
+    if (x_offset<0 || x_offset > x_length
+        || y_offset<0 || y_offset > y_length)
+    {
+        //printf("%f,%f,%f,%f\n", x_offset, x_length,y_offset, y_length);
+        return;
+    }
+
+    //printf("in raster\n");
+
+    u = x_offset / x_length;
+    v = y_offset / y_length;
+
+    float cos2Theta = cosTheta * cosTheta;
+    float lensArea = aperture != 0 ? aperture * aperture * PI : 1;
+    lensArea = 1.0f; // because We / pdf
+    float We = 1.0f / (imgPlaneSize * lensArea * cos2Theta * cos2Theta);
+
+    throughput = make_float3(We);
+    pdf = dist * dist / (cosTheta * lensArea);
+}
+
 //  +-----------------------------------------------------------------------------+
 //  |  extendPathKernel                                                      |
 //  |  extend eye path or light path.                                  LH2'19|
@@ -29,7 +86,10 @@ __global__  __launch_bounds__( 256 , 1 )
 void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 cam_pos, const float spreadAngle, const int4 screenParams, 
-    uint* lightPathBuffer, uint* contributionBuffer_Photon)
+    uint* lightPathBuffer, uint* contributionBuffer_Photon,
+    const float aperture, const float imgPlaneSize,
+    const float3 forward, const float focalDistance, const float3 p1,
+    const float3 right, const float3 up)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->extendLightPath) return;
@@ -139,9 +199,9 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
-    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
+    float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;
-    float3 light_normal = make_float3(pathStateData[jobIndex].light_normal);
+    float3 light_normal = fN;
     const float dist = length(eye2light);
     eye2light = eye2light / dist;
 
@@ -150,6 +210,41 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     const uint photonIdx = atomicAdd(&counters->contribution_photon, 1);
     contributionBuffer_Photon[photonIdx] = jobIndex;
+
+    float3 light2eye = eye2light;
+    float length_l2e = dist;
+
+    float3 throughput_eye;
+    float pdf_eye;
+    float u, v;
+    Sample_Wi(aperture, imgPlaneSize, eye_pos, forward, light_pos,
+        focalDistance, p1, right, up, throughput_eye, pdf_eye, u, v);
+
+    pathStateData[jobIndex].L = make_float4(0.0f);
+    pathStateData[jobIndex].L.w = __uint_as_float(jobIndex);
+
+    if (pdf_eye > EPSILON)
+    {
+        float bsdfPdf;
+        const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
+
+        float3 light_throught = throughput;
+        float cosTheta = fabs(dot(fN, light2eye));
+
+        float eye_cosTheta = fabs(dot(normalize(forward), light2eye * -1.0f));
+        float eye_pdf_solid = 1.0f / (imgPlaneSize * eye_cosTheta * eye_cosTheta * eye_cosTheta);
+        float p_forward = eye_pdf_solid * cosTheta / (length_l2e * length_l2e);
+
+        float misWeight = 1.0f / (1 + dL * p_forward);
+
+        uint x = (scrhsize * u + 0.5);
+        uint y = (scrvsize * v + 0.5);
+        uint idx = y * scrhsize + x;
+
+        float3 L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
+
+        pathStateData[jobIndex].L = make_float4(L*misWeight,__uint_as_float(idx));
+    }
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -159,13 +254,17 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 __host__ void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 camPos,const float spreadAngle, const int4 screenParams,
-    uint* lightPathBuffer, uint* contributionBuffer_Photon)
+    uint* lightPathBuffer, uint* contributionBuffer_Photon,
+    const float aperture, const float imgPlaneSize,
+    const float3 forward, const float focalDistance, const float3 p1,
+    const float3 right, const float3 up)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     extendLightPathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
         R0, blueNoise, camPos, spreadAngle, screenParams, 
-        lightPathBuffer, contributionBuffer_Photon);
+        lightPathBuffer, contributionBuffer_Photon,
+        aperture, imgPlaneSize, forward, focalDistance,p1,right,up);
 }
 
 // EOF

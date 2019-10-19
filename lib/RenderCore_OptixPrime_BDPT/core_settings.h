@@ -105,12 +105,10 @@ struct BiPathState
     float4 eye_intersection;
 
     float4 light_normal;
-    float4 currentLight_hitData;;
     float4 eye_normal;
-    float4 currentEye_hitData;
 
+    float4 currentLight_hitData;;
     float4 pre_light_dir;
-    float4 pre_eye_dir;
 
     uint4 pathInfo; // s_t_type_pass
     float4 L;

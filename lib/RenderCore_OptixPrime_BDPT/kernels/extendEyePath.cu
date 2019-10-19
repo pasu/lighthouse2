@@ -119,9 +119,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         counters->probedDist = HIT_T;			// record primary ray hit distance
 
     float dE = 1.0f / pdf_area; // N0k
+
+    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
+
     if (s > 1)
     {
-        float3 light_pos = make_float3(pathStateData[jobIndex].data2);
         float3 light2eye = normalize(light_pos - I);
 
         float bsdfPdf;
@@ -142,17 +144,14 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].data6 = make_float4(I, pdf_solidangle);
     pathStateData[jobIndex].data7 = make_float4(R, __int_as_float(randomWalkRayIdx));
     pathStateData[jobIndex].eye_normal = make_float4(fN, 0.0f);
-    pathStateData[jobIndex].pre_eye_dir = make_float4(dir, 0.0f);
-    pathStateData[jobIndex].currentEye_hitData = hitData;
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
-    float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
+    float3 eye_pos = I;
 
-    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
     float3 eye2light = light_pos - eye_pos;
-    float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
+    float3 eye_normal = fN;
     const float dist = length(eye2light);
     eye2light = eye2light / dist;
 

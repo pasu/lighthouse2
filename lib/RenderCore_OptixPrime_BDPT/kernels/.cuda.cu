@@ -114,7 +114,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "extendEyePath.cu"
 #include "extendLightPath.cu"
 
-#include "connectionPath_Emissive.cu"
+//#include "connectionPath_Emissive.cu"
 #include "connectionPath_Explicit.cu"
 #include "connectionPath_Connection.cu"
 #include "connectionPath_Photon.cu"
