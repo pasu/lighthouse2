@@ -650,14 +650,14 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         connectionPath_Emissive(pathCount, NKK,pathDataBuffer->DevPtr(),
             view.spreadAngle,accumulatorOnePass->DevPtr(),
             GetScreenParams(),contributionBuffer_Emissive->DevPtr());
-        */
+        
         connectionPath_Explicit(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle, 
             accumulatorOnePass->DevPtr(), 
             GetScreenParams(),contributionBuffer_Explicit->DevPtr(),
             probePos.x + scrwidth * probePos.y);
         
-        /**/
+        *//**/
         connectionPath_Connection(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle,
             accumulatorOnePass->DevPtr(), 
