@@ -36,90 +36,12 @@ void connectionPath_ExplicitKernel(int smcount, BiPathState* pathStateData,
 
     int jobIndex = contributionBuffer_Explicit[gid];
 
-    const int scrhsize = screenParams.x & 0xffff;
-    const int scrvsize = screenParams.x >> 16;
-
-    const uint x_line = jobIndex % scrhsize;
-    uint y_line = jobIndex / scrhsize;
-
-    uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
-
-    uint pass, type, t, s;
-    getPathInfo(path_s_t_type_pass,pass,s,t,type);
-
-    const float3 empty_color = make_float3(0.0f);
-    float3 L = empty_color;
-    float misWeight = 0.0f;
-
     const uint occluded = visibilityHitBuffer[jobIndex >> 5] & (1 << (jobIndex & 31));
 
-    float4 hitData = pathStateData[jobIndex].currentEye_hitData;
-    float3 dir = make_float3(pathStateData[jobIndex].pre_eye_dir);
-
-    float3 throughput = make_float3(pathStateData[jobIndex].data4);
-    float3 beta = make_float3(pathStateData[jobIndex].data5);
-    float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
-    float3 pre_pos = eye_pos - dir * HIT_T;
-    float dE = pathStateData[jobIndex].data4.w;
-
-    const int prim = __float_as_int(hitData.z);
-    const int primIdx = prim == -1 ? prim : (prim & 0xfffff);
-
-    const CoreTri4* instanceTriangles = (const CoreTri4*)instanceDescriptors[INSTANCEIDX].triangles;
-
-    ShadingData shadingData;
-    float3 N, iN, fN, T;
-
-    const float coneWidth = spreadAngle * HIT_T;
-    GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
-
-    float3 light_pos = make_float3(pathStateData[jobIndex].data2);
-    float3 light2eye = light_pos - eye_pos;
-    float length_l2e = length(light2eye);
-    light2eye /= length_l2e;
-
-    float bsdfPdf;
-    const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
-
-    float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
-    float light_pdf = pathStateData[jobIndex].data1.w;
-
-    float3 light_normal = make_float3(pathStateData[jobIndex].light_normal);
-    float light_cosTheta = fabs(dot(light2eye * -1.0f, light_normal));
-
-    // area to solid angle: r^2 / (Area * cos)
-    light_pdf *= length_l2e * length_l2e / light_cosTheta;
-
-    float cosTheta = fabs(dot(fN, light2eye));
-
-    float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
-    float eye_cosTheta = fabs(dot(light2eye, eye_normal));
-
-    float p_forward = bsdfPdf * light_cosTheta / (length_l2e * length_l2e);
-    float p_rev = light_cosTheta * INVPI * eye_cosTheta / (length_l2e * length_l2e);
-
-    float dL = pathStateData[jobIndex].data0.w;
-
-    misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-    //misWeight = 1.0f;
     if (!occluded)
     {
-        L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
-        /*
-        if (jobIndex == probePixelIdx)
-        {
-            printf("%f,%f,%f,%f\n", L.x, throughput.x, sampledBSDF.x, (light_throughput * (1.0f / light_pdf)).x);
-        }
-        */
-
+        accumulatorOnePass[jobIndex] += pathStateData[jobIndex].L;
     }
-
-    if (bsdfPdf < EPSILON || isnan(bsdfPdf))
-    {
-        misWeight = 0.0f;
-    }
-                
-    accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
 }
 
 //  +-----------------------------------------------------------------------------+

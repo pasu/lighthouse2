@@ -180,6 +180,43 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     {
         const uint explicitIdx = atomicAdd(&counters->contribution_explicit, 1);
         contributionBuffer_Explicit[explicitIdx] = jobIndex;
+
+        float3 pre_pos = pos;
+
+        float3 light2eye = eye2light;
+        float length_l2e = dist;
+
+        float bsdfPdf;
+        const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
+
+        float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
+        float light_pdf = pathStateData[jobIndex].data1.w;
+
+        float3 light_normal = make_float3(pathStateData[jobIndex].light_normal);
+        float light_cosTheta = fabs(dot(light2eye * -1.0f, light_normal));
+
+        // area to solid angle: r^2 / (Area * cos)
+        light_pdf *= length_l2e * length_l2e / light_cosTheta;
+
+        float cosTheta = fabs(dot(fN, light2eye));
+
+        float3 eye_normal = fN;
+        float eye_cosTheta = fabs(dot(light2eye, eye_normal));
+
+        float p_forward = bsdfPdf * light_cosTheta / (length_l2e * length_l2e);
+        float p_rev = light_cosTheta * INVPI * eye_cosTheta / (length_l2e * length_l2e);
+
+        float dL = pathStateData[jobIndex].data0.w;
+
+        float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
+        if (bsdfPdf < EPSILON || isnan(bsdfPdf))
+        {
+            misWeight = 0.0f;
+        }
+
+        float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+
+        pathStateData[jobIndex].L = make_float4(L * misWeight, misWeight);
     }
     else
     {

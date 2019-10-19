@@ -113,6 +113,7 @@ struct BiPathState
     float4 pre_eye_dir;
 
     uint4 pathInfo; // s_t_type_pass
+    float4 L;
 };
 
 // counters and other global data, in device memory
