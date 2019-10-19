@@ -30,7 +30,8 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx,
     uint* eyePathBuffer, uint* contributionBuffer_Emissive, uint* contributionBuffer_Explicit,
-    uint* contributionBuffer_Connection)
+    uint* contributionBuffer_Connection,
+    float4* accumulatorOnePass, float NKK)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->extendEyePath) return;
@@ -160,8 +161,20 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     if (shadingData.IsEmissive())
     {
-        const uint emissiveIdx = atomicAdd(&counters->contribution_emissive, 1);
-        contributionBuffer_Emissive[emissiveIdx] = jobIndex;
+        float3 pre_pos = pos;
+        
+        float3 L = throughput * shadingData.color;
+
+        const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
+        const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
+        const float pdfPos = 1.0f / tri.area;
+        const float p_rev = pickProb * pdfPos; // surface area
+
+        float misWeight = 1.0f / (dE * p_rev + NKK);
+
+        accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
+
+        pathStateData[jobIndex].data6.w = 0;
     }
     else if (t == 1)
     {
@@ -183,14 +196,15 @@ __host__ void extendEyePath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx,
     uint* eyePathBuffer, uint* contributionBuffer_Emissive, uint* contributionBuffer_Explicit,
-    uint* contributionBuffer_Connection)
+    uint* contributionBuffer_Connection,
+    float4* accumulatorOnePass, float NKK)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     extendEyePathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
         R0, blueNoise, spreadAngle, screenParams, probePixelIdx,eyePathBuffer,
         contributionBuffer_Emissive, contributionBuffer_Explicit,
-        contributionBuffer_Connection);
+        contributionBuffer_Connection, accumulatorOnePass, NKK);
 }
 
 // EOF

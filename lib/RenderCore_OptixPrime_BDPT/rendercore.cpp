@@ -66,7 +66,7 @@ void extendEyePath(int pathCount, BiPathState* pathStateBuffer,
     const uint R0, const uint* blueNoise, const float spreadAngle,
     const int4 screenParams, const int probePixelIdx, uint* eyePathBuffer,
     uint* contributionBuffer_Emissive,uint* contributionBuffer_Explicit, 
-    uint* contributionBuffer_Connection);
+    uint* contributionBuffer_Connection, float4* accumulatorOnePass, float NKK);
 void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 camPos, const float spreadAngle,const int4 screenParams, 
@@ -614,8 +614,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
             contributionBuffer_Emissive->DevPtr(),contributionBuffer_Explicit->DevPtr(),
-            contributionBuffer_Connection->DevPtr());
-        
+            contributionBuffer_Connection->DevPtr(),
+            accumulatorOnePass->DevPtr(), NKK);        
 
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -646,11 +646,11 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
         CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
         CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
-        /**/
+        /*
         connectionPath_Emissive(pathCount, NKK,pathDataBuffer->DevPtr(),
             view.spreadAngle,accumulatorOnePass->DevPtr(),
             GetScreenParams(),contributionBuffer_Emissive->DevPtr());
-        
+        */
         connectionPath_Explicit(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle, 
             accumulatorOnePass->DevPtr(), 

@@ -97,7 +97,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     }
 
     const uint MAX__LENGTH_E = 8;
-    const uint MAX__LENGTH_L = 5;
+    const uint MAX__LENGTH_L = 2;
 
     if (eye_hit != -1 && s < MAX__LENGTH_E)
     {
