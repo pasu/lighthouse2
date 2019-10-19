@@ -54,7 +54,6 @@ void connectionPath_EmissiveKernel(int smcount, float NKK, BiPathState* pathStat
     float3 dir = make_float3(pathStateData[jobIndex].pre_eye_dir);
 
     float3 throughput = make_float3(pathStateData[jobIndex].data4);
-    float3 beta = make_float3(pathStateData[jobIndex].data5);
     float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
     float3 pre_pos = eye_pos - dir * HIT_T;
     float dE = pathStateData[jobIndex].data4.w;
