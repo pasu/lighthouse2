@@ -152,7 +152,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     float3 light_pos = make_float3(pathStateData[jobIndex].data2);
     float3 eye2light = light_pos - eye_pos;
     float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
-    const float dist = length(eye_pos - eye2light);
+    const float dist = length(eye2light);
     eye2light = eye2light / dist;
 
     visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);

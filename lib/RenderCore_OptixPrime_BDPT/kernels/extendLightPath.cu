@@ -140,12 +140,12 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
     float3 light_pos = make_float3(pathStateData[jobIndex].data2);
-    float3 eye2light = light_pos - eye_pos;
-    float3 eye_normal = make_float3(pathStateData[jobIndex].eye_normal);
-    const float dist = length(eye_pos - eye2light);
+    float3 eye2light = eye_pos - light_pos;
+    float3 light_normal = make_float3(pathStateData[jobIndex].light_normal);
+    const float dist = length(eye2light);
     eye2light = eye2light / dist;
 
-    visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
+    visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
     visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
 
     const uint photonIdx = atomicAdd(&counters->contribution_photon, 1);
