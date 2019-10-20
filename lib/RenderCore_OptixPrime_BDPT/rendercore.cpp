@@ -297,6 +297,7 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 	// clear the accumulator
  	accumulator->Clear( ON_DEVICE );
     accumulatorOnePass->Clear(ON_DEVICE);
+    samplesTaken = 0;
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -542,6 +543,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
 
 		camRNGseed = 0x12345678; // same seed means same noise.
+        samplesTaken = 0;
 	}
 
     // BDPT
@@ -691,8 +693,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
     samplesTaken++;
     renderTarget.BindSurface();
-    finalizeRender(accumulator->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
-    //finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
+    //finalizeRender(accumulator->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
+    finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
     renderTarget.UnbindSurface();
 
     CHK_PRIME(rtpQueryDestroy(queryVisibility));

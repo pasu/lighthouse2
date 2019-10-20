@@ -80,7 +80,7 @@ void connectionPath_EmissiveKernel(int smcount, float NKK, BiPathState* pathStat
     misWeight = 1.0f / (dE * p_rev + NKK);
     //misWeight = 1.0f;
     
-    accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
+    accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
 
     pathStateData[jobIndex].data6.w = 0;
 }

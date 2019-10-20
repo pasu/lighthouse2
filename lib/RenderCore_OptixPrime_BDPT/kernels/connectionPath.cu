@@ -97,6 +97,24 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         light_hit = primIdx;
     }
 
+    if (eye_hit == -1 && (type == EXTEND_EYEPATH || type == NEW_PATH))
+    {
+        float3 hit_dir = make_float3(pathStateData[jobIndex].data7);
+        float3 background = make_float3(SampleSkydome(hit_dir, s+1));
+
+        // hit miss : beta 
+        float3 beta = make_float3(pathStateData[jobIndex].data5);
+        float3 contribution = beta * background;
+
+        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+        FIXNAN_FLOAT3(contribution);
+
+        float dE = pathStateData[jobIndex].data4.w;
+        misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
+
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
+    }
+
     const uint MAX__LENGTH_E = eyePath;
     const uint MAX__LENGTH_L = lightPath;
 
@@ -121,24 +139,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         //const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
         //constructLightBuffer[constructLight] = jobIndex;
         atomicAdd(&counters->totalPixels, 1);
-    }
 
-    if (eye_hit == -1 && type != EXTEND_LIGHTPATH)
-    {
-        float3 hit_dir = make_float3(pathStateData[jobIndex].data7);
-        float3 background = make_float3(SampleSkydome(hit_dir, s+1));
-
-        // hit miss : beta 
-        float3 beta = make_float3(pathStateData[jobIndex].data5);
-        float3 contribution = beta * background;
-
-        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
-        FIXNAN_FLOAT3(contribution);
-
-        float dE = pathStateData[jobIndex].data4.w;
-        misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
-
-        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), misWeight);
+        type = DEAD;
     }
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;

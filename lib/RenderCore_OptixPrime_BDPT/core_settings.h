@@ -42,9 +42,10 @@
 #define NEW_PATH            0
 #define EXTEND_EYEPATH      1
 #define EXTEND_LIGHTPATH    2
+#define DEAD                3
 
 #define MAX_EYEPATH 8
-#define MAX_LIGHTPATH 2
+#define MAX_LIGHTPATH 5
 
 #ifndef __CUDACC__
 

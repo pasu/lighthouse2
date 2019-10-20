@@ -171,7 +171,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float misWeight = 1.0f / (dE * p_rev + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((L*misWeight), misWeight);
+        accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
 
         pathStateData[jobIndex].data6.w = 0;
     }
@@ -215,7 +215,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
 
-        pathStateData[jobIndex].L = make_float4(L * misWeight, misWeight);
+        pathStateData[jobIndex].L = make_float4(L * misWeight, 0.0f);
     }
     else
     {
@@ -280,7 +280,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             misWeight = 0.0f;
         }
 
-        pathStateData[jobIndex].L = make_float4(L * misWeight, misWeight);
+        pathStateData[jobIndex].L = make_float4(L * misWeight, 0.0f);
     }
 }
 
