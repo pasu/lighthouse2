@@ -75,7 +75,8 @@ private:
     int scrspp = 1;									// samples to be taken per screen pixel
 	int skywidth = 0, skyheight = 0;				// size of the skydome texture
 	int maxPixels = 0;								// max screen size buffers can accomodate without a realloc
-	int currentSPP = 0;								// spp count which will be accomodated without a realloc
+	int currentSPP = 0;	
+    int samplesTaken = 0;// spp count which will be accomodated without a realloc
 	int2 probePos = make_int2( 0 );					// triangle picking; primary ray for this pixel copies its triid to coreStats.probedTriid
 	vector<CoreMesh*> meshes;						// list of meshes, to be referenced by the instances
 	vector<CoreInstance*> instances;					// list of instances: model id plus transform

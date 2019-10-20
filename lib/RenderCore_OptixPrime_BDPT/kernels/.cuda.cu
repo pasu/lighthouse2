@@ -96,8 +96,18 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
     counters->visibilityRays = 0;
 
     counters->photomappings = 0;
+
+    counters->totalPixels = 0;
 }
 __host__ void InitCountersForExtend( int pathCount ) { InitCountersForExtend_Kernel << <1, 32 >> > (pathCount); }
+
+__global__ void InitCountersForPixels_Kernel()
+{
+    if (threadIdx.x != 0) return;
+
+    counters->totalPixels = 0;
+}
+__host__ void InitCountersForPixels() { InitCountersForPixels_Kernel << <1, 32 >> > (); }
 
 __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, sizeof( void* ) ); }
 
@@ -120,6 +130,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 #include "connectionPath_Photon.cu"
 
 #include "connectionPath.cu"
+#include "finalizeConnections.cu"
 } // namespace lh2core
 
 // EOF

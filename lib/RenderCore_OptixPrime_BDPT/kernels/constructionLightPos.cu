@@ -79,8 +79,8 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
     }
     */
 
-    accumulator[jobIndex] += accumulatorOnePass[jobIndex];
-    accumulator[jobIndex].w = sampleIdx;
+    //accumulator[jobIndex] += accumulatorOnePass[jobIndex];
+    //accumulator[jobIndex].w = sampleIdx;
     accumulatorOnePass[jobIndex] = make_float4(0.0f);
 
     float r0,r1,r2,r3;

@@ -23,14 +23,17 @@
 
 #include "core_settings.h"
 
+
+
 namespace lh2core
 {
 
 // forward declaration of cuda code
 const surfaceReference* renderTargetRef();
 void InitCountersForExtend( int pathCount );
-void InitContributions();
-
+void InitCountersForPixels();
+//void InitContributions();
+void finalizeRender(const float4* accumulator, const int w, const int h, const int spp, const float brightness, const float contrast);
 // setters / getters
 void SetInstanceDescriptors( CoreInstanceDesc* p );
 void SetMaterialList( CoreMaterial* p );
@@ -108,7 +111,11 @@ void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathS
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass, uint* constructLightBuffer,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer);
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
+    uint eyePath, uint lightPath);
+
+void finalizeConnections(int smcount, float4* accumulatorOnePass,
+    float4* accumulator);
 
 void finalizeRender_BDPT(const float4* accumulator, 
     const int w, const int h, const float brightness, const float contrast);
@@ -539,13 +546,14 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
     // BDPT
     ///////////////////////////////////
-    static bool bInit = false;
+    //static bool bInit = false;
     static float NKK = 4.1;
-    if (!bInit)
+    //if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
         InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
-        bInit = true;
+        InitCountersForPixels();
+        //bInit = true;
     }    
     //////////////////////////////////////
 	// update instance descriptor array on device
@@ -587,30 +595,24 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
 
-    for (int pathLength = 1; pathLength <= 8; pathLength++)
+    uint totalPixels = 0;
+
+    constructionLightPos(lightCount, NKK,
+        constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
+        RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
+        randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(),
+        accumulator->DevPtr(),
+        probePos.x + scrwidth * probePos.y, constructEyeBuffer->DevPtr());
+
+    while (totalPixels<pathCount)
     {
-        //             constructLightBuffer->CopyToHost();
-        //             uint* index = constructLightBuffer->HostPtr();
-        // 
-        //             accumulatorOnePass->CopyToHost();
-        //             float4* color = accumulatorOnePass->HostPtr();
-
-        constructionLightPos(lightCount, NKK,
-            constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
-            RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
-            randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(), 
-            accumulator->DevPtr(), 
-            probePos.x + scrwidth * probePos.y,constructEyeBuffer->DevPtr());
-        
-//         pathDataBuffer->CopyToHost();
-//         BiPathState* state = pathDataBuffer->HostPtr();
-
         constructionEyePos(lightCount, constructEyeBuffer->DevPtr(),
             pathDataBuffer->DevPtr(), visibilityRayBuffer->DevPtr(),
             randomWalkRayBuffer->DevPtr(), RandomUInt(camRNGseed),
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
             GetScreenParams());
-        counterBuffer->CopyToHost();
+        
+        //counterBuffer->CopyToHost();
 
         extendEyePath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -626,16 +628,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr(),
             contributionBuffer_Photon->DevPtr(), 
             view.aperture, view.imagePlane, forward,
-            view.focalDistance, view.p1, right, up);
-        
-        /*
-        extendPath(pathCount, pathDataBuffer->DevPtr(),
-            visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
-            RandomUInt(camRNGseed), blueNoise->DevPtr(),
-            view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1, view.spreadAngle, GetScreenParams(),
-            probePos.x + scrwidth * probePos.y);
-        */
-        
+            view.focalDistance, view.p1, right, up);        
 
         counterBuffer->CopyToHost();
         Counters& counters = counterBuffer->HostPtr()[0];
@@ -682,20 +675,24 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
             accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr(),
             GetScreenParams(), 
-            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
+            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr(),MAX_EYEPATH,MAX_LIGHTPATH);
 
         counterBuffer->CopyToHost();
         counters = counterBuffer->HostPtr()[0];
 
+        totalPixels = counters.totalPixels;
+
         coreStats.probedInstid = counters.probedInstid;
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
-
-        //InitContributions();
     }
 
+    finalizeConnections(pathCount, accumulatorOnePass->DevPtr(), accumulator->DevPtr());
+
+    samplesTaken++;
     renderTarget.BindSurface();
-    finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
+    finalizeRender(accumulator->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
+    //finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
     renderTarget.UnbindSurface();
 
     CHK_PRIME(rtpQueryDestroy(queryVisibility));

@@ -29,7 +29,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass, uint* constructLightBuffer,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
+    uint eyePath, uint lightPath)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
@@ -96,8 +97,8 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         light_hit = primIdx;
     }
 
-    const uint MAX__LENGTH_E = 8;
-    const uint MAX__LENGTH_L = 5;
+    const uint MAX__LENGTH_E = eyePath;
+    const uint MAX__LENGTH_L = lightPath;
 
     if (eye_hit != -1 && s < MAX__LENGTH_E)
     {
@@ -117,8 +118,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     }
     else
     {
-        const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
-        constructLightBuffer[constructLight] = jobIndex;
+        //const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
+        //constructLightBuffer[constructLight] = jobIndex;
+        atomicAdd(&counters->totalPixels, 1);
     }
 
     if (eye_hit == -1 && type != EXTEND_LIGHTPATH)
@@ -151,13 +153,14 @@ __host__ void connectionPath(int smcount, float NKK, float scene_area,
     BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass, uint* constructLightBuffer,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
+    uint eyePath, uint lightPath)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, 
         pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
         constructLightBuffer, screenParams,
-        constructEyeBuffer, eyePathBuffer, lightPathBuffer);
+        constructEyeBuffer, eyePathBuffer, lightPathBuffer, eyePath, lightPath);
 }
 
 // EOF
