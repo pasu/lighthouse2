@@ -29,8 +29,7 @@ __global__  __launch_bounds__( 256 , 1 )
 void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx,
-    uint* eyePathBuffer, uint* contributionBuffer_Emissive, uint* contributionBuffer_Explicit,
-    uint* contributionBuffer_Connection,
+    uint* eyePathBuffer,float4* contribution_buffer, 
     float4* accumulatorOnePass, float NKK)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -155,9 +154,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     const float dist = length(eye2light);
     eye2light = eye2light / dist;
 
-    visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
-    visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-
     if (shadingData.IsEmissive())
     {
         float3 pre_pos = pos;
@@ -177,9 +173,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     }
     else if (t == 1)
     {
-        const uint explicitIdx = atomicAdd(&counters->contribution_explicit, 1);
-        contributionBuffer_Explicit[explicitIdx] = jobIndex;
-
         float3 pre_pos = pos;
 
         float3 light2eye = eye2light;
@@ -215,13 +208,14 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
 
-        pathStateData[jobIndex].L = make_float4(L * misWeight, 0.0f);
+        const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
+        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
+
+        visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
+        visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
     }
     else
     {
-        const uint connectionIdx = atomicAdd(&counters->contribution_connection, 1);
-        contributionBuffer_Connection[connectionIdx] = jobIndex;
-
         float3 pre_pos = pos;
 
         float3 light2eye = eye2light;
@@ -280,7 +274,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             misWeight = 0.0f;
         }
 
-        pathStateData[jobIndex].L = make_float4(L * misWeight, 0.0f);
+        const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
+        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
+
+        visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
+        visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
     }
 }
 
@@ -291,16 +289,14 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 __host__ void extendEyePath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx,
-    uint* eyePathBuffer, uint* contributionBuffer_Emissive, uint* contributionBuffer_Explicit,
-    uint* contributionBuffer_Connection,
+    uint* eyePathBuffer, float4* contribution_buffer,
     float4* accumulatorOnePass, float NKK)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     extendEyePathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
         R0, blueNoise, spreadAngle, screenParams, probePixelIdx,eyePathBuffer,
-        contributionBuffer_Emissive, contributionBuffer_Explicit,
-        contributionBuffer_Connection, accumulatorOnePass, NKK);
+        contribution_buffer, accumulatorOnePass, NKK);
 }
 
 // EOF

@@ -55,9 +55,9 @@ void SetCounters( Counters* p );
 // BDPT
 ////////////////////////////////////////
 void InitIndexForConstructionLight(int pathCount, uint* constructLightBuffer);
-void constructionLightPos(int pathCount, float NKK, uint* constructLightBuffer, 
+void constructionLightPos(int pathCount, float NKK, 
     BiPathState* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator, 
+    Ray4* randomWalkRays, float4* accumulatorOnePass, 
     const int probePixelIdx, uint* constructEyeBuffer);
 void constructionEyePos(int pathCount, uint* constructEyeBuffer,
     BiPathState* pathStateBuffer, Ray4* visibilityRays, Ray4* randomWalkRays,
@@ -68,12 +68,11 @@ void extendEyePath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float spreadAngle,
     const int4 screenParams, const int probePixelIdx, uint* eyePathBuffer,
-    uint* contributionBuffer_Emissive,uint* contributionBuffer_Explicit, 
-    uint* contributionBuffer_Connection, float4* accumulatorOnePass, float NKK);
+    float4* contribution_buffer, float4* accumulatorOnePass, float NKK);
 void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 camPos, const float spreadAngle,const int4 screenParams, 
-    uint* lightPathBuffer, uint* contributionBuffer_Photon,
+    uint* lightPathBuffer, float4* contribution_buffer,
     const float aperture, const float imgPlaneSize,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up);
@@ -109,13 +108,17 @@ void connectionPath_Photon(int smcount, BiPathState* pathStateData,
 
 void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
-    float4* accumulatorOnePass, uint* constructLightBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
     uint eyePath, uint lightPath);
 
 void finalizeConnections(int smcount, float4* accumulatorOnePass,
     float4* accumulator);
+
+void finalizeContribution(int smcount,
+    uint* visibilityHitBuffer, float4* accumulatorOnePass,
+    float4* contribution_buffer);
 
 void finalizeRender_BDPT(const float4* accumulator, 
     const int w, const int h, const float brightness, const float contrast);
@@ -241,19 +244,14 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		// delete CoreBuffers
 		delete accumulator;
         delete accumulatorOnePass;
-        delete weightMeasureBuffer;
+
+        delete contributions;
         // BDPT
         /////////////////////////////
-        delete constructLightBuffer;
         delete constructEyeBuffer;
         
         delete eyePathBuffer;
         delete lightPathBuffer;
-
-        delete contributionBuffer_Emissive;
-        delete contributionBuffer_Explicit;
-        delete contributionBuffer_Connection;
-        delete contributionBuffer_Photon;
 
         delete pathDataBuffer;
         delete visibilityRayBuffer;
@@ -262,30 +260,26 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         delete randomWalkHitBuffer;
         /////////////////////////////
 
- 		accumulator = new CoreBuffer<float4>( maxPixels, ON_DEVICE );
+ 		//accumulator = new CoreBuffer<float4>( maxPixels, ON_DEVICE );
         accumulatorOnePass = new CoreBuffer<float4>(maxPixels, ON_DEVICE);
+        contributions = new CoreBuffer<float4>(maxPixels * MAX_EYEPATH * MAX_LIGHTPATH, ON_DEVICE);
         //weightMeasureBuffer = new CoreBuffer<float4>(maxPixels, ON_DEVICE);    
         // BDPT
         ///////////////////////////////////////////
-        constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
+        //constructLightBuffer = new CoreBuffer<uint>( maxPixels * spp, ON_DEVICE );
         constructEyeBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
 
         eyePathBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
         lightPathBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
-
-        contributionBuffer_Emissive = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
-        contributionBuffer_Explicit = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
-        contributionBuffer_Connection = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
-        contributionBuffer_Photon = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
 
         pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
 
         //photomapping = new CoreBuffer<float4>(maxPixels * spp, ON_DEVICE);
         //photomappingIdx = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
         
-        visibilityRayBuffer = new CoreBuffer<Ray4>(maxPixels * spp, ON_DEVICE);
+        visibilityRayBuffer = new CoreBuffer<Ray4>(maxPixels *  MAX_EYEPATH * (MAX_LIGHTPATH), ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityRayBuffer->DevPtr(), &visibilityRaysDesc));
-        visibilityHitBuffer = new CoreBuffer<uint>((maxPixels * spp + 31) >> 5, ON_DEVICE);
+        visibilityHitBuffer = new CoreBuffer<uint>((maxPixels * MAX_EYEPATH * MAX_LIGHTPATH + 31) >> 5, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_HIT_BITMASK, RTP_BUFFER_TYPE_CUDA_LINEAR, visibilityHitBuffer->DevPtr(), &visibilityHitsDesc));
         randomWalkRayBuffer = new CoreBuffer<Ray4>(maxPixels * 2 * spp, ON_DEVICE);
         CHK_PRIME(rtpBufferDescCreate(context, RTP_BUFFER_FORMAT_RAY_ORIGIN_TMIN_DIRECTION_TMAX, RTP_BUFFER_TYPE_CUDA_LINEAR, randomWalkRayBuffer->DevPtr(), &randomWalkRaysDesc));
@@ -295,8 +289,9 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		printf( "buffers resized for %i pixels @ %i samples.\n", maxPixels, spp );
 	}
 	// clear the accumulator
- 	accumulator->Clear( ON_DEVICE );
+ 	//accumulator->Clear( ON_DEVICE );
     accumulatorOnePass->Clear(ON_DEVICE);
+    contributions->Clear(ON_DEVICE);
     samplesTaken = 0;
 }
 
@@ -535,12 +530,13 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 	// clean accumulator, if requested
 	if (converge == Restart)
 	{
-		accumulator->Clear( ON_DEVICE );
+		//accumulator->Clear( ON_DEVICE );
         accumulatorOnePass->Clear(ON_DEVICE);
+        contributions->Clear(ON_DEVICE);
         pathDataBuffer->Clear(ON_DEVICE);
 
-        InitCountersForExtend(scrwidth * scrheight * scrspp);
-        InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
+        //InitCountersForExtend(scrwidth * scrheight * scrspp);
+        //InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
 
 		camRNGseed = 0x12345678; // same seed means same noise.
         samplesTaken = 0;
@@ -553,7 +549,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     //if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
-        InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
+        //InitIndexForConstructionLight(scrwidth * scrheight * scrspp, constructLightBuffer->DevPtr());
         InitCountersForPixels();
         //bInit = true;
     }    
@@ -600,10 +596,9 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     uint totalPixels = 0;
 
     constructionLightPos(lightCount, NKK,
-        constructLightBuffer->DevPtr(), pathDataBuffer->DevPtr(),
+        pathDataBuffer->DevPtr(),
         RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
         randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(),
-        accumulator->DevPtr(),
         probePos.x + scrwidth * probePos.y, constructEyeBuffer->DevPtr());
 
     while (totalPixels<pathCount)
@@ -620,37 +615,30 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
-            contributionBuffer_Emissive->DevPtr(),contributionBuffer_Explicit->DevPtr(),
-            contributionBuffer_Connection->DevPtr(),
-            accumulatorOnePass->DevPtr(), NKK);        
+            contributions->DevPtr(), accumulatorOnePass->DevPtr(), NKK);
 
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.pos,
             view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr(),
-            contributionBuffer_Photon->DevPtr(), 
+            contributions->DevPtr(),
             view.aperture, view.imagePlane, forward,
             view.focalDistance, view.p1, right, up);        
 
         counterBuffer->CopyToHost();
         Counters& counters = counterBuffer->HostPtr()[0];
 
-        CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, pathCount));
-        CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, pathCount));
-        CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
-        CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
-        CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
-
         CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, counters.randomWalkRays));
         CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, counters.randomWalkRays));
         CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
         CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
         CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
+        
         /*
         connectionPath_Emissive(pathCount, NKK,pathDataBuffer->DevPtr(),
             view.spreadAngle,accumulatorOnePass->DevPtr(),
             GetScreenParams(),contributionBuffer_Emissive->DevPtr());
-        *//**/
+        
         connectionPath_Explicit(pathCount, pathDataBuffer->DevPtr(),
             visibilityHitBuffer->DevPtr(), view.spreadAngle, 
             accumulatorOnePass->DevPtr(), 
@@ -670,12 +658,12 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             view.pos,
             contributionBuffer_Photon->DevPtr(),
             probePos.x + scrwidth * probePos.y);
-        
+        *//**/
         InitCountersForExtend(0);
 
         float scene_area = 5989.0f;
         connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
-            accumulatorOnePass->DevPtr(), constructLightBuffer->DevPtr(),
+            accumulatorOnePass->DevPtr(),
             GetScreenParams(), 
             constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr(),MAX_EYEPATH,MAX_LIGHTPATH);
 
@@ -683,18 +671,28 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         counters = counterBuffer->HostPtr()[0];
 
         totalPixels = counters.totalPixels;
+        lightCount = counters.contribution_count;
 
         coreStats.probedInstid = counters.probedInstid;
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
     }
 
-    finalizeConnections(pathCount, accumulatorOnePass->DevPtr(), accumulator->DevPtr());
+    CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, lightCount));
+    CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, lightCount));
+    CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
+    CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
+    CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
+
+    finalizeContribution(lightCount, visibilityHitBuffer->DevPtr(),
+        accumulatorOnePass->DevPtr(), contributions->DevPtr());
+
+    //finalizeConnections(pathCount, accumulatorOnePass->DevPtr(), accumulator->DevPtr());
 
     samplesTaken++;
     renderTarget.BindSurface();
-    //finalizeRender(accumulator->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
-    finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
+    finalizeRender(accumulatorOnePass->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
+    //finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
     renderTarget.UnbindSurface();
 
     CHK_PRIME(rtpQueryDestroy(queryVisibility));
@@ -708,25 +706,17 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 void RenderCore::Shutdown()
 {
 	// delete ray buffers
-    delete weightMeasureBuffer;
-    delete constructLightBuffer;
     delete constructEyeBuffer;
 
     delete eyePathBuffer;
     delete lightPathBuffer;
-
-    delete contributionBuffer_Emissive;
-    delete contributionBuffer_Explicit;
-    delete contributionBuffer_Connection;
-    delete contributionBuffer_Photon;
 
     delete pathDataBuffer;
     delete visibilityRayBuffer;
     delete visibilityHitBuffer;
     delete randomWalkRayBuffer;
     delete randomWalkHitBuffer;
-    delete photomapping;
-    delete photomappingIdx;
+
 	// delete internal data
 	delete accumulator;
     delete accumulatorOnePass;

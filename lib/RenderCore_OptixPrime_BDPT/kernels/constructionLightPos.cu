@@ -40,15 +40,13 @@ LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s
 //  |  Generate the first vertex of the light path including pos and direction.                  LH2'19|
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
-void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffer, 
+void constructionLightPosKernel(int smcount, float NKK, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator,
+    Ray4* randomWalkRays, float4* accumulatorOnePass,
     const int probePixelIdx, uint* constructEyeBuffer)
 {
-    int gid = threadIdx.x + blockIdx.x * blockDim.x;
-    if (gid >= counters->constructionLightPos) return;
-
-    int jobIndex = constructLightBuffer[gid];
+    int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
+    if (jobIndex >= smcount) return;
 
     const int scrhsize = screenParams.x & 0xffff;
     const int scrvsize = screenParams.x >> 16;
@@ -81,7 +79,7 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 
     //accumulator[jobIndex] += accumulatorOnePass[jobIndex];
     //accumulator[jobIndex].w = sampleIdx;
-    accumulatorOnePass[jobIndex] = make_float4(0.0f);
+    //accumulatorOnePass[jobIndex] = make_float4(0.0f);
 
     float r0,r1,r2,r3;
 
@@ -147,15 +145,15 @@ void constructionLightPosKernel(int smcount, float NKK,uint* constructLightBuffe
 //  |  constructionLightPos                                                            |
 //  |  Entry point for the persistent constructionLightPos kernel.               LH2'19|
 //  +-----------------------------------------------------------------------------+
-__host__ void constructionLightPos( int smcount, float NKK, uint* constructLightBuffer, 
+__host__ void constructionLightPos( int smcount, float NKK, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
-    Ray4* randomWalkRays, float4* accumulatorOnePass, float4* accumulator,
+    Ray4* randomWalkRays, float4* accumulatorOnePass,
     const int probePixelIdx, uint* constructEyeBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, constructLightBuffer, 
+    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, 
         pathStateData, R0, blueNoise, screenParams, randomWalkRays,
-        accumulatorOnePass, accumulator, probePixelIdx, constructEyeBuffer);
+        accumulatorOnePass, probePixelIdx, constructEyeBuffer);
 }
 
 // EOF

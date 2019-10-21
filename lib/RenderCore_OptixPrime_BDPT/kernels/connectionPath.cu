@@ -27,7 +27,7 @@
 __global__  __launch_bounds__( 256 , 1 )
 void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
-    float4* accumulatorOnePass, uint* constructLightBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
     uint eyePath, uint lightPath)
@@ -112,7 +112,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
+        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
     }
 
     const uint MAX__LENGTH_E = eyePath;
@@ -153,7 +153,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 //  +-----------------------------------------------------------------------------+
 __host__ void connectionPath(int smcount, float NKK, float scene_area, 
     BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
-    float4* accumulatorOnePass, uint* constructLightBuffer,
+    float4* accumulatorOnePass,
     const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
     uint eyePath, uint lightPath)
@@ -161,7 +161,7 @@ __host__ void connectionPath(int smcount, float NKK, float scene_area,
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, 
         pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
-        constructLightBuffer, screenParams,
+        screenParams,
         constructEyeBuffer, eyePathBuffer, lightPathBuffer, eyePath, lightPath);
 }
 

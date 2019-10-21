@@ -86,7 +86,7 @@ __global__  __launch_bounds__( 256 , 1 )
 void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 cam_pos, const float spreadAngle, const int4 screenParams, 
-    uint* lightPathBuffer, uint* contributionBuffer_Photon,
+    uint* lightPathBuffer, float4* contribution_buffer,
     const float aperture, const float imgPlaneSize,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up)
@@ -205,12 +205,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     const float dist = length(eye2light);
     eye2light = eye2light / dist;
 
-    visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
-    visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-
-    const uint photonIdx = atomicAdd(&counters->contribution_photon, 1);
-    contributionBuffer_Photon[photonIdx] = jobIndex;
-
     float3 light2eye = eye2light;
     float length_l2e = dist;
 
@@ -243,7 +237,11 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
         float3 L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
 
-        pathStateData[jobIndex].L = make_float4(L*misWeight,__uint_as_float(idx));
+        const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
+        contribution_buffer[contib_idx] = make_float4(L*misWeight, __uint_as_float(idx));
+
+        visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
+        visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
     }
 }
 
@@ -254,7 +252,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 __host__ void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 camPos,const float spreadAngle, const int4 screenParams,
-    uint* lightPathBuffer, uint* contributionBuffer_Photon,
+    uint* lightPathBuffer, float4* contribution_buffer,
     const float aperture, const float imgPlaneSize,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up)
@@ -263,7 +261,7 @@ __host__ void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     extendLightPathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
         R0, blueNoise, camPos, spreadAngle, screenParams, 
-        lightPathBuffer, contributionBuffer_Photon,
+        lightPathBuffer, contribution_buffer,
         aperture, imgPlaneSize, forward, focalDistance,p1,right,up);
 }
 

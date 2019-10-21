@@ -101,17 +101,12 @@ private:
 
     // BDPT
     ///////////////////////////
-    CoreBuffer<float4>* weightMeasureBuffer = 0;
-    CoreBuffer<uint>* constructLightBuffer = 0; 
+    CoreBuffer<float4>* contributions = 0;
+
     CoreBuffer<uint>* constructEyeBuffer = 0;
 
     CoreBuffer<uint>* eyePathBuffer = 0;
     CoreBuffer<uint>* lightPathBuffer = 0;
-
-    CoreBuffer<uint>* contributionBuffer_Emissive = 0;
-    CoreBuffer<uint>* contributionBuffer_Explicit = 0;
-    CoreBuffer<uint>* contributionBuffer_Connection = 0;
-    CoreBuffer<uint>* contributionBuffer_Photon = 0;
 
     CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
 
@@ -125,8 +120,6 @@ private:
     RTPbufferdesc randomWalkRaysDesc;				// buffer descriptor for extension rays
     RTPbufferdesc randomWalkHitsDesc;				// buffer descriptor for extension ray hits
 
-    CoreBuffer<float4>* photomapping = 0;
-    CoreBuffer<uint>* photomappingIdx = 0;
     ///////////////////////////////
 	CoreTexDesc* texDescs = 0;						// array of texture descriptors
 	int textureCount = 0;							// size of texture descriptor array

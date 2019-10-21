@@ -55,6 +55,9 @@
     <CudaCompile Include="kernels\finalizeConnections.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
+    <CudaCompile Include="kernels\finalizeContribution.cu">
+      <Filter>CUDA</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\CUDA\shared_host_code\interoptexture.cpp" />

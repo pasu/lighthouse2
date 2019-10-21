@@ -44,7 +44,7 @@
 #define EXTEND_LIGHTPATH    2
 #define DEAD                3
 
-#define MAX_EYEPATH 8
+#define MAX_EYEPATH 2
 #define MAX_LIGHTPATH 5
 
 #ifndef __CUDACC__
@@ -141,6 +141,7 @@ struct Counters
 	float probedDist;
 
     uint totalPixels;
+    uint contribution_count;
 };
 
 // ------------------------------------------------------------------------------

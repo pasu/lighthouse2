@@ -45,10 +45,14 @@ void connectionPath_PhotonKernel(int smcount, BiPathState* pathStateData,
         uint idx = __float_as_uint(pathStateData[jobIndex].L.w);
 
         float4 res_color = pathStateData[jobIndex].L;
+        res_color.w = 0.0f;
 
-        atomicAdd(&(accumulatorOnePass[idx].x), res_color.x);
-        atomicAdd(&(accumulatorOnePass[idx].y), res_color.y);
-        atomicAdd(&(accumulatorOnePass[idx].z), res_color.z);
+        accumulatorOnePass[idx] += res_color;
+
+
+        //atomicAdd(&(accumulatorOnePass[idx].x), res_color.x);
+        //atomicAdd(&(accumulatorOnePass[idx].y), res_color.y);
+        //atomicAdd(&(accumulatorOnePass[idx].z), res_color.z);
         //atomicAdd(&(accumulatorOnePass[idx].w), 1.0f);
     }
 }

@@ -105,7 +105,7 @@ __global__ void InitCountersForPixels_Kernel()
 {
     if (threadIdx.x != 0) return;
 
-    counters->totalPixels = 0;
+    counters->contribution_count = 0;
 }
 __host__ void InitCountersForPixels() { InitCountersForPixels_Kernel << <1, 32 >> > (); }
 
@@ -131,6 +131,7 @@ __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, siz
 
 #include "connectionPath.cu"
 #include "finalizeConnections.cu"
+#include "finalizeContribution.cu"
 } // namespace lh2core
 
 // EOF
