@@ -93,6 +93,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
 
+    /*
     float3 eye_pos = make_float3(pathStateData[jobIndex].data6);
 
     float3 light_pos = make_float3(pathStateData[jobIndex].data2);
@@ -103,6 +104,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
 
     visibilityRays[jobIndex].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
     visibilityRays[jobIndex].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+    */
 }
 
 //  +-----------------------------------------------------------------------------+

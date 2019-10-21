@@ -110,9 +110,9 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         FIXNAN_FLOAT3(contribution);
 
         float dE = pathStateData[jobIndex].data4.w;
-        //misWeight = 1.0f / (dE * (1.0f / (scene_area)) + NKK);
+        misWeight = 0.5f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
     }
 
     const uint MAX__LENGTH_E = eyePath;

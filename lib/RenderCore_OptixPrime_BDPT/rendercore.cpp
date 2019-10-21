@@ -543,7 +543,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     // BDPT
     ///////////////////////////////////
     //static bool bInit = false;
-    static float NKK = 4.1;
+    static float NKK = 1.5;
     //if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
