@@ -158,11 +158,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     {
         float3 pre_pos = pos;
         
-        float3 L = throughput * shadingData.color;
+        float3 L = beta * shadingData.color;
 
         const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
         const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
-        const float pdfPos = 0.5f / tri.area;
+        const float pdfPos = 1.0f / tri.area;
         const float p_rev = pickProb * pdfPos; // surface area
 
         float misWeight = 1.0f / (dE * p_rev + NKK);

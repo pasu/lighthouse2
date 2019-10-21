@@ -44,7 +44,7 @@
 #define EXTEND_LIGHTPATH    2
 #define DEAD                3
 
-#define MAX_EYEPATH 8
+#define MAX_EYEPATH 4
 #define MAX_LIGHTPATH 4
 
 #ifndef __CUDACC__
