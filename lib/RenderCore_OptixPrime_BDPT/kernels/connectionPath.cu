@@ -136,7 +136,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
         FIXNAN_FLOAT3(contribution);
 
-        //float dE = pathStateData[jobIndex].data4.w;
+        float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
         accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);

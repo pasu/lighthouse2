@@ -505,7 +505,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     // BDPT
     ///////////////////////////////////
     //static bool bInit = false;
-    static float NKK = MAX_LIGHTPATH*0.5;
+    static float NKK = MAX_LIGHTPATH*0.9;
     //if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
