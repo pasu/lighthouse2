@@ -207,7 +207,6 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
             /////////////////////////
 		}
 		// delete CoreBuffers
-		delete accumulator;
         delete accumulatorOnePass;
 
         delete contributions;
@@ -252,7 +251,6 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
 		printf( "buffers resized for %i pixels @ %i samples.\n", maxPixels, spp );
 	}
 	// clear the accumulator
- 	//accumulator->Clear( ON_DEVICE );
     accumulatorOnePass->Clear(ON_DEVICE);
     contributions->Clear(ON_DEVICE);
     samplesTaken = 0;
@@ -493,7 +491,6 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 	// clean accumulator, if requested
 	if (converge == Restart)
 	{
-		//accumulator->Clear( ON_DEVICE );
         accumulatorOnePass->Clear(ON_DEVICE);
         contributions->Clear(ON_DEVICE);
         pathDataBuffer->Clear(ON_DEVICE);
@@ -644,12 +641,9 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     finalizeContribution(visNum, visibilityHitBuffer->DevPtr(),
         accumulatorOnePass->DevPtr(), contributions->DevPtr());
 
-    //finalizeConnections(pathCount, accumulatorOnePass->DevPtr(), accumulator->DevPtr());
-
     samplesTaken++;
     renderTarget.BindSurface();
     finalizeRender(accumulatorOnePass->DevPtr(), scrwidth, scrheight, samplesTaken, brightness, contrast);
-    //finalizeRender_BDPT(accumulator->DevPtr(), scrwidth, scrheight, brightness, contrast);
     renderTarget.UnbindSurface();
 
     CHK_PRIME(rtpQueryDestroy(queryVisibility));
@@ -675,7 +669,6 @@ void RenderCore::Shutdown()
     delete randomWalkHitBuffer;
 
 	// delete internal data
-	delete accumulator;
     delete accumulatorOnePass;
 	delete counterBuffer;
 	delete texDescs;

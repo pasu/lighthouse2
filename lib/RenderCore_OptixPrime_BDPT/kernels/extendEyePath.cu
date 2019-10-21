@@ -37,7 +37,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     int jobIndex = eyePathBuffer[gid];
 
-    uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
+    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass, pass, s, t, type);
@@ -46,7 +46,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = (pass-1)*12 +(t - 1) * 3 + s;
+    const uint sampleIndex = pass;
     y %= scrvsize;
 
     float3 pos, dir;
@@ -83,7 +83,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     float3 R;
     float r4, r5;
 
-    if (false && sampleIndex < 256)
+    if (sampleIndex < 256)
     {
         r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 0);
         r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 1);
@@ -144,8 +144,9 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].data7 = make_float4(R, __int_as_float(randomWalkRayIdx));
     pathStateData[jobIndex].eye_normal = make_float4(fN, 0.0f);
 
+    pass++;
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
-    pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
+    pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
 
     float3 eye_pos = I;
 
@@ -190,7 +191,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float cosTheta = fabs(dot(fN, light2eye));
 
-        float3 eye_normal = fN;
         float eye_cosTheta = fabs(dot(light2eye, eye_normal));
 
         float p_forward = bsdfPdf * light_cosTheta / (length_l2e * length_l2e);

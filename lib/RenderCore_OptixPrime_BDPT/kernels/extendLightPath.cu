@@ -96,7 +96,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     int jobIndex = lightPathBuffer[gid];
 
-    uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
+    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass, pass, s, t, type);
@@ -105,7 +105,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = (pass-1)*12 +(t - 1) * 3 + s;
+    const uint sampleIndex = pass;
     y %= scrvsize;
 
     float3 pos, dir;
@@ -147,7 +147,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     float3 R;
     float r4, r5;
-    if (false && sampleIndex < 256)
+    if (sampleIndex < 256)
     {
         r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 0);
         r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 1);
@@ -174,7 +174,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
     randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
     randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
-
         
     t++;
 
@@ -196,8 +195,9 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].pre_light_dir = make_float4(dir, 0.0f);
     pathStateData[jobIndex].currentLight_hitData = hitData;
 
+    pass++;
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
-    pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
+    pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
 
     float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;

@@ -35,10 +35,17 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
 
-    uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
+    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass,pass,s,t,type);
+
+    if (type == DEAD)
+    {
+        atomicAdd(&counters->totalPixels, 1);
+        return;
+    }
+        
 
     const float3 empty_color = make_float3(0.0f);
     float misWeight = 0.0f;
@@ -141,7 +148,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     }
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
-    pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
+    pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
 }
 
 //  +-----------------------------------------------------------------------------+

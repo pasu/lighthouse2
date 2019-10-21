@@ -48,50 +48,30 @@ void constructionLightPosKernel(int smcount, float NKK,
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
 
-    uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
+    const int scrhsize = screenParams.x & 0xffff;
+    const int scrvsize = screenParams.x >> 16;
+    const uint x = jobIndex % scrhsize;
+    uint y = jobIndex / scrhsize;
+    y %= scrvsize;
+
+    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
 
     uint s = 0;
     uint t = 1;
     uint type = NEW_PATH;
     uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
 
-    /*
-    if (jobIndex == probePixelIdx)
-    {
-        uint pass, eye, light, c;
-
-        getPathInfo(path_s_t_type_pass,pass,eye,light,c);
-        //printf("%d,%d\n", eye,light);
-        float4 v4 = weightMeasureBuffer[jobIndex];
-        float fSum = v4.x + v4.y + v4.z + v4.w;
-        //printf("%f,%f,%f,%f,%f\n", v4.x / fSum, v4.y / fSum, v4.z / fSum, v4.w / fSum, fSum);
-
-        //float4 color = accumulatorOnePass[jobIndex];
-        //printf("%f,%f,%f,%d,%d,%d\n", color.x, color.y, color.z, eye,light, sampleIdx);
-    }
-    */
-
-    //accumulator[jobIndex] += accumulatorOnePass[jobIndex];
-    //accumulator[jobIndex].w = sampleIdx;
-    //accumulatorOnePass[jobIndex] = make_float4(0.0f);
-
     float r0,r1,r2,r3;
 
-    /* blue Noise is bad here
-    if (false && sampleIdx < 256)
+    /* blue Noise is bad here*/
+    if (sampleIdx < 256)
     {
         r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
         r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
         r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
         r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
-
-        if (jobIndex == probePixelIdx)
-        {
-            printf("sampleIdx:%d,r0:%f,r1:%f,r2:%f,r3:%f\n", sampleIdx,r0, r1, r2, r3);
-        }
     }
-    else
-    */
+    else    
     {
         uint seed = WangHash(jobIndex + R0);
 
@@ -129,7 +109,7 @@ void constructionLightPosKernel(int smcount, float NKK,
     sampleIdx++;
     path_s_t_type_pass = (s << 27) + (t<<22) + (type<<19) + sampleIdx;
 
-    pathStateData[jobIndex].pathInfo.w = path_s_t_type_pass;
+    pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
 
     const uint eyeIdx = atomicAdd(&counters->constructionEyePos, 1);
     constructEyeBuffer[eyeIdx] = jobIndex;

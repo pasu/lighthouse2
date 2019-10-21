@@ -45,7 +45,7 @@
 #define DEAD                3
 
 #define MAX_EYEPATH 4
-#define MAX_LIGHTPATH 4
+#define MAX_LIGHTPATH 2
 
 #ifndef __CUDACC__
 
@@ -109,12 +109,10 @@ struct BiPathState
     float4 eye_intersection;
 
     float4 light_normal;
-    float4 eye_normal;
+    float4 eye_normal; // w: s_t_type_pass
 
     float4 currentLight_hitData;
     float4 pre_light_dir;
-
-    uint4 pathInfo; // s_t_type_pass
 };
 
 // counters and other global data, in device memory

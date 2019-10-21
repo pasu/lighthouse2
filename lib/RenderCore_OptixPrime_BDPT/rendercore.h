@@ -96,7 +96,6 @@ private:
     CoreBuffer<CoreInstanceDesc>* instDescBuffer = 0; // instance descriptor array
     CoreBuffer<uint>* texel32Buffer = 0;			// texel buffer 0: regular ARGB32 texture data
 
-    CoreBuffer<float4>* accumulator = 0;			// accumulator buffer for the path tracer
     CoreBuffer<float4>* accumulatorOnePass = 0;
 	CoreBuffer<Counters>* counterBuffer = 0;		// counters for persistent threads
 
