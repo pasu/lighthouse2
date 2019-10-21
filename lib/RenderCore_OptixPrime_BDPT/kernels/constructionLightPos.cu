@@ -48,18 +48,12 @@ void constructionLightPosKernel(int smcount, float NKK,
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
 
-    const int scrhsize = screenParams.x & 0xffff;
-    const int scrvsize = screenParams.x >> 16;
-    const uint x = jobIndex % scrhsize;
-    uint y = jobIndex / scrhsize;
-
     uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
 
     uint s = 0;
     uint t = 1;
     uint type = NEW_PATH;
     uint sampleIdx = path_s_t_type_pass & 524287;//2^19-1
-    const uint sampleIndex = sampleIdx * 12 + (t - 1) * 3 + s;
 
     /*
     if (jobIndex == probePixelIdx)

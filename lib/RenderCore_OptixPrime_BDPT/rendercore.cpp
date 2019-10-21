@@ -76,35 +76,6 @@ void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     const float aperture, const float imgPlaneSize,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up);
-void extendPath(int pathCount, BiPathState* pathStateBuffer,
-    Ray4* visibilityRays, Ray4* randomWalkRays,
-    const uint R0, const uint* blueNoise, const float lensSize, const float imgPlaneSize, const float3 camPos,
-    const float3 right, const float3 up, const float3 forward, const float3 p1, const float spreadAngle,
-    const int4 screenParams, const int probePixelIdx);
-
-void connectionPath_Emissive(int smcount, float NKK, BiPathState* pathStateData,
-    const float spreadAngle, float4* accumulatorOnePass,
-    const int4 screenParams,
-    uint* contributionBuffer_Emissive);
-
-void connectionPath_Explicit(int smcount, BiPathState* pathStateData,
-    uint* visibilityHitBuffer, const float spreadAngle,
-    float4* accumulatorOnePass,
-    const int4 screenParams, uint* contributionBuffer_Explicit, 
-    const int probePixelIdx);
-
-void connectionPath_Connection(int smcount, BiPathState* pathStateData,
-    uint* visibilityHitBuffer, const float spreadAngle,
-    float4* accumulatorOnePass,
-    const int4 screenParams, uint* contributionBuffer_Connection);
-
-void connectionPath_Photon(int smcount, BiPathState* pathStateData,
-    uint* visibilityHitBuffer, const float aperture, const float imgPlaneSize,
-    const float3 forward, const float focalDistance, const float3 p1,
-    const float3 right, const float3 up, const float spreadAngle,
-    float4* accumulatorOnePass, const int4 screenParams,
-    const float3 camPos,
-    uint* contributionBuffer_Photon, const int probePixelIdx);
 
 void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
@@ -113,15 +84,9 @@ void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathS
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
     uint eyePath, uint lightPath);
 
-void finalizeConnections(int smcount, float4* accumulatorOnePass,
-    float4* accumulator);
-
 void finalizeContribution(int smcount,
     uint* visibilityHitBuffer, float4* accumulatorOnePass,
     float4* contribution_buffer);
-
-void finalizeRender_BDPT(const float4* accumulator, 
-    const int w, const int h, const float brightness, const float contrast);
 //////////////////////////////////////////
 
 } // namespace lh2core

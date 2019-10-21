@@ -173,8 +173,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     }
     else if (t == 1)
     {
-        float3 pre_pos = pos;
-
         float3 light2eye = eye2light;
         float length_l2e = dist;
 
@@ -216,8 +214,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     }
     else
     {
-        float3 pre_pos = pos;
-
         float3 light2eye = eye2light;
         float length_l2e = dist;
 

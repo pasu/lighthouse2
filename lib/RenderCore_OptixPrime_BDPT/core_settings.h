@@ -111,11 +111,10 @@ struct BiPathState
     float4 light_normal;
     float4 eye_normal;
 
-    float4 currentLight_hitData;;
+    float4 currentLight_hitData;
     float4 pre_light_dir;
 
     uint4 pathInfo; // s_t_type_pass
-    float4 L;
 };
 
 // counters and other global data, in device memory
@@ -127,15 +126,9 @@ struct Counters
     uint extendEyePath;
     uint extendLightPath;
 
-    uint contribution_emissive;
-    uint contribution_explicit;
-    uint contribution_connection;
-    uint contribution_photon;
-
     uint visibilityRays;
     uint randomWalkRays;
 	
-    uint photomappings;
 	int probedInstid;
 	int probedTriid;
 	float probedDist;

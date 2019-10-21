@@ -201,7 +201,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;
-    float3 light_normal = fN;
     const float dist = length(eye2light);
     eye2light = eye2light / dist;
 
@@ -213,9 +212,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float u, v;
     Sample_Wi(aperture, imgPlaneSize, eye_pos, forward, light_pos,
         focalDistance, p1, right, up, throughput_eye, pdf_eye, u, v);
-
-    pathStateData[jobIndex].L = make_float4(0.0f);
-    pathStateData[jobIndex].L.w = __uint_as_float(jobIndex);
 
     if (pdf_eye > EPSILON)
     {

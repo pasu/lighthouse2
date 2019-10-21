@@ -13,9 +13,6 @@
     <CudaCompile Include="kernels\constructionLightPos.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
-    <CudaCompile Include="kernels\extendPath.cu">
-      <Filter>CUDA</Filter>
-    </CudaCompile>
     <CudaCompile Include="..\CUDA\shared_kernel_code\finalize_shared.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
@@ -38,21 +35,6 @@
       <Filter>CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="kernels\extendLightPath.cu">
-      <Filter>CUDA</Filter>
-    </CudaCompile>
-    <CudaCompile Include="kernels\connectionPath_Emissive.cu">
-      <Filter>CUDA</Filter>
-    </CudaCompile>
-    <CudaCompile Include="kernels\connectionPath_Explicit.cu">
-      <Filter>CUDA</Filter>
-    </CudaCompile>
-    <CudaCompile Include="kernels\connectionPath_Connection.cu">
-      <Filter>CUDA</Filter>
-    </CudaCompile>
-    <CudaCompile Include="kernels\connectionPath_Photon.cu">
-      <Filter>CUDA</Filter>
-    </CudaCompile>
-    <CudaCompile Include="kernels\finalizeConnections.cu">
       <Filter>CUDA</Filter>
     </CudaCompile>
     <CudaCompile Include="kernels\finalizeContribution.cu">

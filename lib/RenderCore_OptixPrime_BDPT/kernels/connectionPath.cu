@@ -35,19 +35,12 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
 
-    const int scrhsize = screenParams.x & 0xffff;
-    const int scrvsize = screenParams.x >> 16;
-
-    const uint x_line = jobIndex % scrhsize;
-    uint y_line = jobIndex / scrhsize;
-
     uint path_s_t_type_pass = pathStateData[jobIndex].pathInfo.w;
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass,pass,s,t,type);
 
     const float3 empty_color = make_float3(0.0f);
-    float3 L = empty_color;
     float misWeight = 0.0f;
     
     int eye_hit = -1;
@@ -100,7 +93,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     const uint MAX__LENGTH_E = eyePath;
     const uint MAX__LENGTH_L = lightPath;
 
-    uint idxPixels = -1;
+    int idxPixels = -1;
     if (eye_hit != -1 && s < MAX__LENGTH_E)
     {
         type = EXTEND_EYEPATH;
@@ -136,7 +129,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
         FIXNAN_FLOAT3(contribution);
 
-        float dE = pathStateData[jobIndex].data4.w;
+        //float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
         accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);

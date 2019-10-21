@@ -57,7 +57,6 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = (pass - 1) * 12 + (t - 1) * 3 + s;
     y %= scrvsize;
 
     float3 posOnPixel, posOnLens;
