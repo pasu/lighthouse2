@@ -83,7 +83,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     float3 R;
     float r4, r5;
 
-    if (sampleIndex < 256)
+    if (false && sampleIndex < 256)
     {
         r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 0);
         r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 1);
