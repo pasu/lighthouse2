@@ -158,7 +158,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     {
         float3 pre_pos = pos;
         
-        float3 L = beta * shadingData.color;
+        float3 L = throughput * shadingData.color;
 
         const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
         const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);

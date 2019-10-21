@@ -139,7 +139,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         float dE = pathStateData[jobIndex].data4.w;
         misWeight = 1.0f;// / (dE * (1.0f / (scene_area)) + NKK);
 
-        //accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
+        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
     }
 
     if (idxPixels != -1)
