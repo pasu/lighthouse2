@@ -44,8 +44,9 @@
 #define EXTEND_LIGHTPATH    2
 #define DEAD                3
 
-#define MAX_EYEPATH 3
-#define MAX_LIGHTPATH 2
+#define MAXPATHLENGTH		4
+#define MAX_EYEPATH MAXPATHLENGTH // eye starts from 0
+#define MAX_LIGHTPATH MAXPATHLENGTH // light starts from 1
 
 #ifndef __CUDACC__
 
@@ -60,7 +61,7 @@
 #include "helper_math.h"	// for vector types
 #include "platform.h"
 #include "system.h"
-#undef APIENTRY				// get rid of an anoying warning
+#undef APIENTRY				// get rid of an annoying warning
 #include "cuda.h"
 #include "cuda_gl_interop.h"
 #include "nvrtc.h"

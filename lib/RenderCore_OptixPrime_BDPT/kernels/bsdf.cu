@@ -30,7 +30,7 @@
 // This function is used to chose a random direction over the hemisphere proportional to some pdf.
 // It returns the BSDF itself, and also the sampled direction and probability density for this direction.
 // ----------------------------------------------------------------
-/*
+/**/
 #if 1
 
 //#include "bsdf.h"
@@ -43,10 +43,10 @@
 #include "bsdfs/disney.h"
 
 #endif
-*/
+
 
 // EOF
-/**/
+/*
 // Lambert BSDF
 // ----------------------------------------------------------------
 
@@ -78,5 +78,5 @@ __device__ static float3 SampleBSDF(const ShadingData& shadingData, float3 iN, c
         return shadingData.color * INVPI;
     }
 }
-
+*/
 // EOF

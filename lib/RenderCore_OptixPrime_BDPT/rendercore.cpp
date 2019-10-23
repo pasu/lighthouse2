@@ -81,8 +81,7 @@ void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathS
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer,
-    uint eyePath, uint lightPath);
+    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer);
 
 void finalizeContribution(int smcount,
     uint* visibilityHitBuffer, float4* accumulatorOnePass,
@@ -505,7 +504,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     // BDPT
     ///////////////////////////////////
     //static bool bInit = false;
-    static float NKK = MAX_LIGHTPATH*0.9;
+    static float NKK = MAX_LIGHTPATH;
     //if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
@@ -564,6 +563,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(),
         probePos.x + scrwidth * probePos.y, constructEyeBuffer->DevPtr());
 
+    //printf("%d\n", samplesTaken);
+
     while (totalPixels<pathCount)
     {
         constructionEyePos(pathCount, constructEyeBuffer->DevPtr(),
@@ -601,7 +602,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
             accumulatorOnePass->DevPtr(),
             GetScreenParams(), 
-            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr(),MAX_EYEPATH,MAX_LIGHTPATH);
+            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
 
         counterBuffer->CopyToHost();
         counters = counterBuffer->HostPtr()[0];

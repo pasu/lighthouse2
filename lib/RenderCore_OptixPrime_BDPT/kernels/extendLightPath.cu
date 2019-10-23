@@ -226,7 +226,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         float p_forward = eye_pdf_solid * cosTheta / (length_l2e * length_l2e);
 
         float misWeight = 1.0f / (1 + dL * p_forward);
-
+        //misWeight = 1.0f;
         uint x = (scrhsize * u + 0.5);
         uint y = (scrvsize * v + 0.5);
         uint idx = y * scrhsize + x;
@@ -238,6 +238,13 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+
+        /*
+        if (jobIndex == 1600*450+800)
+        {
+            printf("MIS photon:%d,%d,%d,%f\n", s+t,s,t,misWeight);
+        }
+        */
     }
 }
 

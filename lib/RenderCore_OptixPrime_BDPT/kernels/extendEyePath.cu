@@ -159,21 +159,33 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     {
         float3 pre_pos = pos;
         
-        float3 L = throughput * shadingData.color;
+        if (dot(fN, dir) < 0) // single side light
+        {
+            float3 L = throughput * shadingData.color;
 
-        const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
-        const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
-        const float pdfPos = 1.0f / tri.area;
-        const float p_rev = pickProb * pdfPos; // surface area
+            const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
+            const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
+            const float pdfPos = 1.0f / tri.area;
+            const float p_rev = pickProb * pdfPos; // surface area
 
-        float misWeight = 1.0f / (dE * p_rev + NKK);
+            float misWeight = 1.0f / (dE * p_rev + NKK);
 
-        accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
+            accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
+            /*
+            if (jobIndex == 1600 * 450 + 800)
+            {
+                printf("MIS emissive:%d,%d,%d,%f\n", s,s, t, misWeight);
+            }
+            */
+        }
 
         pathStateData[jobIndex].data6.w = 0;
     }
     else if (t == 1)
     {
+        if ((s + t) > MAXPATHLENGTH)
+            return;
+
         float3 light2eye = eye2light;
         float length_l2e = dist;
 
@@ -211,9 +223,18 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+        /*
+        if (jobIndex == 1600 * 450 + 800)
+        {
+            printf("MIS explicit:%d,%d,%d,%f\n", s + t, s, t, misWeight);
+        }
+        */
     }
     else
     {
+        if ((s + t) > MAXPATHLENGTH)
+            return;
+
         float3 light2eye = eye2light;
         float length_l2e = dist;
 
@@ -269,12 +290,17 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         {
             misWeight = 0.0f;
         }
-
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+        /*
+        if (jobIndex == 1600 * 450 + 800)
+        {
+            printf("MIS connection:%d,%d,%d,%f\n", s + t, s, t, misWeight);
+        }
+        */
     }
 }
 
