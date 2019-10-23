@@ -40,7 +40,7 @@ LH2_DEVFUNC void getPathInfo(const uint& path_s_t_type_pass, uint& pass, uint& s
 //  |  Generate the first vertex of the light path including pos and direction.                  LH2'19|
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
-void constructionLightPosKernel(int smcount, float NKK, 
+void constructionLightPosKernel(int smcount, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass,
     const int probePixelIdx, uint* constructEyeBuffer)
@@ -64,7 +64,7 @@ void constructionLightPosKernel(int smcount, float NKK,
     float r0,r1,r2,r3;
 
     /* blue Noise is bad here*/
-    if (sampleIdx < 256)
+    if (false && sampleIdx < 256)
     {
         r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
         r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
@@ -119,13 +119,13 @@ void constructionLightPosKernel(int smcount, float NKK,
 //  |  constructionLightPos                                                            |
 //  |  Entry point for the persistent constructionLightPos kernel.               LH2'19|
 //  +-----------------------------------------------------------------------------+
-__host__ void constructionLightPos( int smcount, float NKK, 
+__host__ void constructionLightPos( int smcount, 
     BiPathState* pathStateData, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass,
     const int probePixelIdx, uint* constructEyeBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, NKK, 
+    constructionLightPosKernel << < gridDim.x, 256 >> > (smcount, 
         pathStateData, R0, blueNoise, screenParams, randomWalkRays,
         accumulatorOnePass, probePixelIdx, constructEyeBuffer);
 }

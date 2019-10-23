@@ -226,6 +226,11 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         float p_forward = eye_pdf_solid * cosTheta / (length_l2e * length_l2e);
 
         float misWeight = 1.0f / (1 + dL * p_forward);
+
+        if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
+        {
+            misWeight = 0.0f;
+        }
         //misWeight = 1.0f;
         uint x = (scrhsize * u + 0.5);
         uint y = (scrvsize * v + 0.5);

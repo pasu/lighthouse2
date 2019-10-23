@@ -30,7 +30,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx,
     uint* eyePathBuffer,float4* contribution_buffer, 
-    float4* accumulatorOnePass, float NKK)
+    float4* accumulatorOnePass)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->extendEyePath) return;
@@ -171,12 +171,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             float misWeight = 1.0f / (dE * p_rev + NKK);
 
             accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
-            /*
-            if (jobIndex == 1600 * 450 + 800)
-            {
-                printf("MIS emissive:%d,%d,%d,%f\n", s,s, t, misWeight);
-            }
-            */
         }
 
         pathStateData[jobIndex].data6.w = 0;
@@ -212,6 +206,10 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
         if (bsdfPdf < EPSILON || isnan(bsdfPdf))
+        {
+            misWeight = 0.0f;
+        }
+        if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
         {
             misWeight = 0.0f;
         }
@@ -290,6 +288,10 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         {
             misWeight = 0.0f;
         }
+        if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
+        {
+            misWeight = 0.0f;
+        }
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
 
@@ -312,13 +314,13 @@ __host__ void extendEyePath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float spreadAngle, const int4 screenParams, const int probePixelIdx,
     uint* eyePathBuffer, float4* contribution_buffer,
-    float4* accumulatorOnePass, float NKK)
+    float4* accumulatorOnePass)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     extendEyePathKernel << < gridDim.x, 256 >> > (smcount, pathStateBuffer,
         visibilityRays, randomWalkRays,
         R0, blueNoise, spreadAngle, screenParams, probePixelIdx,eyePathBuffer,
-        contribution_buffer, accumulatorOnePass, NKK);
+        contribution_buffer, accumulatorOnePass);
 }
 
 // EOF

@@ -55,7 +55,7 @@ void SetCounters( Counters* p );
 // BDPT
 ////////////////////////////////////////
 void InitIndexForConstructionLight(int pathCount, uint* constructLightBuffer);
-void constructionLightPos(int pathCount, float NKK, 
+void constructionLightPos(int pathCount, 
     BiPathState* pathStateBuffer, const uint R0, const uint* blueNoise, const int4 screenParams,
     Ray4* randomWalkRays, float4* accumulatorOnePass, 
     const int probePixelIdx, uint* constructEyeBuffer);
@@ -68,7 +68,7 @@ void extendEyePath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float spreadAngle,
     const int4 screenParams, const int probePixelIdx, uint* eyePathBuffer,
-    float4* contribution_buffer, float4* accumulatorOnePass, float NKK);
+    float4* contribution_buffer, float4* accumulatorOnePass);
 void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays, const uint R0, const uint* blueNoise,
     const float3 camPos, const float spreadAngle,const int4 screenParams, 
@@ -77,7 +77,7 @@ void extendLightPath(int smcount, BiPathState* pathStateBuffer,
     const float3 forward, const float focalDistance, const float3 p1,
     const float3 right, const float3 up);
 
-void connectionPath(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
+void connectionPath(int smcount, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
@@ -503,8 +503,6 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
 
     // BDPT
     ///////////////////////////////////
-    //static bool bInit = false;
-    static float NKK = MAX_LIGHTPATH;
     //if (!bInit)
     {
         InitCountersForExtend(scrwidth * scrheight * scrspp);
@@ -557,7 +555,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     uint extendEyePathNum = 0;
     uint extendLightPathNum = 0;
 
-    constructionLightPos(pathCount, NKK,
+    constructionLightPos(pathCount,
         pathDataBuffer->DevPtr(),
         RandomUInt(camRNGseed), blueNoise->DevPtr(), GetScreenParams(),
         randomWalkRayBuffer->DevPtr(), accumulatorOnePass->DevPtr(),
@@ -577,7 +575,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
-            contributions->DevPtr(), accumulatorOnePass->DevPtr(), NKK);
+            contributions->DevPtr(), accumulatorOnePass->DevPtr());
 
         extendLightPath(extendLightPathNum, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
@@ -598,8 +596,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         
         InitCountersForExtend(0);
 
-        float scene_area = 5989.0f;
-        connectionPath(pathCount, NKK, scene_area, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
+        //float scene_area = 5989.0f;
+        connectionPath(pathCount, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
             accumulatorOnePass->DevPtr(),
             GetScreenParams(), 
             constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());

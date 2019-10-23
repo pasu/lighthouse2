@@ -25,7 +25,7 @@
 //  |  Generate primary rays, to be traced by Optix Prime.                  LH2'19|
 //  +-----------------------------------------------------------------------------+
 __global__  __launch_bounds__( 256 , 1 )
-void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState* pathStateData,
+void connectionPathKernel(int smcount, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
@@ -96,25 +96,7 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
         light_hit = primIdx;
     }
 
-    if (eye_hit == -1 && type != EXTEND_LIGHTPATH && type != DEAD)
-    {
-        float3 hit_dir = make_float3(pathStateData[jobIndex].data7);
-        float3 background = make_float3(SampleSkydome(hit_dir, s + 1));
-
-        // hit miss : beta 
-        float3 beta = make_float3(pathStateData[jobIndex].data5);
-        float3 contribution = beta * background;
-
-        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
-        FIXNAN_FLOAT3(contribution);
-
-        float dE = pathStateData[jobIndex].data4.w;
-        misWeight = 1.0f / (dE * (1.0f / (scene_area)) + NKK);
-
-        accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
-    }
-
-    int idxPixels = -1;
+    int idxPixel = -1;
     if (eye_hit != -1 && s < MAX_EYEPATH)
     {
         type = EXTEND_EYEPATH;
@@ -135,7 +117,37 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
     {
         //const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
         //constructLightBuffer[constructLight] = jobIndex;
-        idxPixels = atomicAdd(&counters->totalPixels, 1);  
+
+        idxPixel = atomicAdd(&counters->totalPixels, 1);
+        type = EXTEND_EYEPATH; // temporary mark, later it should be DEAD
+    }
+
+    if (eye_hit == -1 && type == EXTEND_EYEPATH/* (type == NEW_PATH || type == EXTEND_EYEPATH) */)
+    {
+        if (!(eye_pdf < EPSILON || isnan(eye_pdf)))
+        {
+            float3 hit_dir = make_float3(pathStateData[jobIndex].data7);
+            float3 background = make_float3(SampleSkydome(hit_dir, s + 1));
+
+            // hit miss : beta 
+            float3 throughput = make_float3(pathStateData[jobIndex].data5);
+
+            float3 fN = make_float3(pathStateData[jobIndex].eye_normal);
+            float cosTheta = fabs(dot(fN, hit_dir));
+            float3 contribution = throughput * background;
+
+            CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+            FIXNAN_FLOAT3(contribution);
+
+            float dE = pathStateData[jobIndex].data4.w;
+            misWeight = 1.0f;// / (dE * (1.0f / (SCENE_AREA)) + NKK);
+
+            accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
+        }
+    }
+
+    if (idxPixel != -1)
+    {
         type = DEAD;
     }
 
@@ -147,14 +159,14 @@ void connectionPathKernel(int smcount, float NKK, float scene_area, BiPathState*
 //  |  constructionLightPos                                                            |
 //  |  Entry point for the persistent constructionLightPos kernel.               LH2'19|
 //  +-----------------------------------------------------------------------------+
-__host__ void connectionPath(int smcount, float NKK, float scene_area, 
+__host__ void connectionPath(int smcount, 
     BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
     uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    connectionPathKernel << < gridDim.x, 256 >> > (smcount, NKK, scene_area, 
+    connectionPathKernel << < gridDim.x, 256 >> > (smcount,
         pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
         screenParams,
         constructEyeBuffer, eyePathBuffer, lightPathBuffer);

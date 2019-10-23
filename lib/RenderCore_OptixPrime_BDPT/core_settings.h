@@ -22,7 +22,6 @@
 
 // core-specific settings
 #define CLAMPFIREFLIES		// suppress fireflies by clamping
-#define MAXPATHLENGTH		3
 // #define USE_LAMBERT_BSDF	// override default microfacet model
 // #define USE_MULTISCATTER_BSDF // override default microfacet model
 // #define GGXCONDUCTOR // alternative is the diffuse ggx brdf
@@ -44,9 +43,11 @@
 #define EXTEND_LIGHTPATH    2
 #define DEAD                3
 
-#define MAXPATHLENGTH		4
+#define MAXPATHLENGTH		3
 #define MAX_EYEPATH MAXPATHLENGTH // eye starts from 0
 #define MAX_LIGHTPATH MAXPATHLENGTH // light starts from 1
+#define NKK (MAXPATHLENGTH*1.0f)
+#define SCENE_AREA 6000.0f  
 
 #ifndef __CUDACC__
 
