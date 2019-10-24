@@ -97,6 +97,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     int jobIndex = lightPathBuffer[gid];
 
     uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
+    uint data = __float_as_uint(pathStateData[jobIndex].light_normal.w);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass, pass, s, t, type);
@@ -141,6 +142,8 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     {
         shadingData.color = make_float3(0.0f);
     }
+
+    if (ROUGHNESS < 0.01f) FLAGS |= S_SPECULAR; else FLAGS &= ~S_SPECULAR;
 
     throughput = beta;
     pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
@@ -187,11 +190,19 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
     float dL = (1.0f + eye_p * d) / pdf_area;
 
+    if (FLAGS & S_BOUNCED)
+    {
+        pdf_solidangle = 0.0f; // terminate the eye path extension
+    }
+
+    if (!(FLAGS & S_SPECULAR)) FLAGS |= S_BOUNCED; else FLAGS |= S_VIASPECULAR;
+
     pathStateData[jobIndex].data0 = make_float4(throughput, dL);
     pathStateData[jobIndex].data1 = make_float4(beta, pdf_area);
     pathStateData[jobIndex].data2 = make_float4(I, pdf_solidangle);
     pathStateData[jobIndex].data3 = make_float4(R, __int_as_float(randomWalkRayIdx));
-    pathStateData[jobIndex].light_normal = make_float4(fN, 0.0f);
+
+    pathStateData[jobIndex].light_normal = make_float4(fN, data);
     pathStateData[jobIndex].pre_light_dir = make_float4(dir, 0.0f);
     pathStateData[jobIndex].currentLight_hitData = hitData;
 

@@ -21,6 +21,13 @@
 #define HIT_T hitData.w
 #define RAY_O pos
 
+// path state flags
+#define S_SPECULAR		1	// previous path vertex was specular
+#define S_BOUNCED		2	// path encountered a diffuse vertex
+#define S_VIASPECULAR	4	// path has seen at least one specular vertex
+
+#define FLAGS data
+
 //  +-----------------------------------------------------------------------------+
 //  |  extendPathKernel                                                      |
 //  |  extend eye path or light path.                                  LH2'19|
@@ -38,6 +45,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     int jobIndex = eyePathBuffer[gid];
 
     uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
+    uint data = __float_as_uint(pathStateData[jobIndex].light_normal.w);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass, pass, s, t, type);
@@ -76,6 +84,8 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     const float3 I = RAY_O + HIT_T * dir;
     const float coneWidth = spreadAngle * HIT_T;
     GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
+
+    if (ROUGHNESS < 0.01f) FLAGS |= S_SPECULAR; else FLAGS &= ~S_SPECULAR;
 
     throughput = beta;
     pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
@@ -141,14 +151,24 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     }
 
+    if (FLAGS & S_BOUNCED)
+    {
+        pdf_solidangle = 0.0f; // terminate the eye path extension
+    }
+
+    if (!(FLAGS & S_SPECULAR)) FLAGS |= S_BOUNCED; else FLAGS |= S_VIASPECULAR;
+
+    path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
+
     pathStateData[jobIndex].data4 = make_float4(throughput, dE);
     pathStateData[jobIndex].data5 = make_float4(beta, pdf_area);;
     pathStateData[jobIndex].data6 = make_float4(I, pdf_solidangle);
     pathStateData[jobIndex].data7 = make_float4(R, __int_as_float(randomWalkRayIdx));
-    pathStateData[jobIndex].eye_normal = make_float4(fN, 0.0f);
+    pathStateData[jobIndex].eye_normal = make_float4(fN, 
+        __uint_as_float(path_s_t_type_pass));
+    pathStateData[jobIndex].light_normal.w = __uint_as_float(data);
 
-    path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
-    pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
+    
 
     float3 eye_pos = I;
 

@@ -110,7 +110,9 @@ void constructionLightPosKernel(int smcount,
     pathStateData[jobIndex].data1 = make_float4(beta, light_p);
     pathStateData[jobIndex].data2 = make_float4(pos, light_pdf_solid);
     pathStateData[jobIndex].data3 = make_float4(lightDir, __int_as_float(randomWalkRayIdx));
-    pathStateData[jobIndex].light_normal = make_float4(normal, 0.0f);
+
+    float data = __uint_as_float((jobIndex << 8) + 1 /* S_SPECULAR */);
+    pathStateData[jobIndex].light_normal = make_float4(normal, data);
 
     sampleIdx++;
     path_s_t_type_pass = (s << 27) + (t<<22) + (type<<19) + sampleIdx;

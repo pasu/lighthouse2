@@ -48,6 +48,14 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
 
     int jobIndex = constructEyeBuffer[gid];
 
+    /*
+    int res = (__float_as_uint(pathStateData[jobIndex].light_normal.w) >> 8);
+    if (res != jobIndex)
+    {
+        printf("%d,%d\n",jobIndex,res);
+    }
+    */
+
     uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
 
     uint pass, type, t, s;
