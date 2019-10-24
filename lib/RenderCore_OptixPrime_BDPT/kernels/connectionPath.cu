@@ -41,7 +41,6 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
 
     if (type == DEAD)
     {
-        atomicAdd(&counters->totalPixels, 1);
         return;
     }
         
@@ -118,7 +117,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
         //const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
         //constructLightBuffer[constructLight] = jobIndex;
 
-        idxPixel = atomicAdd(&counters->totalPixels, 1);
+        idxPixel = 1;
         type = EXTEND_EYEPATH; // temporary mark, later it should be DEAD
     }
 
