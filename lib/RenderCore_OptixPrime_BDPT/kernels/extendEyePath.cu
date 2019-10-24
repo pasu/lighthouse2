@@ -83,7 +83,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     float3 R;
     float r4, r5;
 
-    if (false && sampleIndex < 256)
+    if (sampleIndex < 256)
     {
         r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 4);
         r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 5);
@@ -161,7 +161,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     {
         float3 pre_pos = pos;
         
-        //if (dot(fN, dir) < 0) // single side light
+        if (dot(fN, dir) < 0) // single side light
         {
             float3 L = throughput * shadingData.color;
 

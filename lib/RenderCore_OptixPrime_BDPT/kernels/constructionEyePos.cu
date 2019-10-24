@@ -66,7 +66,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     // depth of field camera for no filter
     float r0, r1, r2, r3;
 
-    if (false && sampleIdx < 256)
+    if (sampleIdx < 256)
     {
         r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
         r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
