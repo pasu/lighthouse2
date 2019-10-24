@@ -62,6 +62,11 @@ __host__ void SetClampValue( float c ) { cudaMemcpyToSymbol( clampValue, &c, siz
 
 // BDPT
 /////////////////////////////////////////////////
+LH2_DEVFUNC void copyPathState(const BiPathState orgin, BiPathState& target)
+{
+    memcpy(&target, &orgin, sizeof(BiPathState));
+}
+
 __global__ void InitIndexForConstructionLight_Kernel(int pathCount, uint* construcLightBuffer)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
@@ -89,8 +94,6 @@ __global__ void InitCountersForExtend_Kernel( int pathCount )
 
     counters->randomWalkRays = 0;
     counters->visibilityRays = 0;
-
-    counters->totalPixels = 0;
 }
 __host__ void InitCountersForExtend( int pathCount ) { InitCountersForExtend_Kernel << <1, 32 >> > (pathCount); }
 

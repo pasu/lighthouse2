@@ -133,7 +133,6 @@ struct Counters
 	int probedTriid;
 	float probedDist;
 
-    uint totalPixels;
     uint contribution_count;
 };
 

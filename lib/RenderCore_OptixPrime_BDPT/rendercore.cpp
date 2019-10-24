@@ -550,8 +550,6 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
 
-    uint totalPixels = 0;
-
     uint extendEyePathNum = 0;
     uint extendLightPathNum = 0;
 
@@ -567,7 +565,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         probePos.x + scrwidth * probePos.y, constructEyeBuffer->DevPtr());
 
     int pathLength = 1;
-    while (totalPixels<pathCount)
+    do
     {
         constructionEyePos(pathCount, constructEyeBuffer->DevPtr(),
             pathDataBuffer->DevPtr(), visibilityRayBuffer->DevPtr(),
@@ -614,7 +612,6 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         counterBuffer->CopyToHost();
         counters = counterBuffer->HostPtr()[0];
 
-        totalPixels = counters.totalPixels;
         visNum = counters.contribution_count;
         extendLightPathNum = counters.extendLightPath;
         extendEyePathNum = counters.extendEyePath;
@@ -642,7 +639,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         coreStats.probedInstid = counters.probedInstid;
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
-    }
+    } while (extendLightPathNum + extendEyePathNum > 0);
 
     CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, visNum));
     CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, visNum));
