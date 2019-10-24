@@ -195,7 +195,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].pre_light_dir = make_float4(dir, 0.0f);
     pathStateData[jobIndex].currentLight_hitData = hitData;
 
-    pass++;
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
 
@@ -229,7 +228,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
         if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
         {
-            misWeight = 0.0f;
+            return;
         }
         //misWeight = 1.0f;
         uint x = (scrhsize * u + 0.5);

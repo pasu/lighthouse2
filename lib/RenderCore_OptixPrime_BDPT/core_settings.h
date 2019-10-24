@@ -46,7 +46,7 @@
 #define MAXPATHLENGTH		3
 #define MAX_EYEPATH MAXPATHLENGTH // eye starts from 0
 #define MAX_LIGHTPATH MAXPATHLENGTH // light starts from 1
-#define NKK (MAXPATHLENGTH*1.0f)
+#define NKK (MAX_LIGHTPATH*0.8f)
 #define SCENE_AREA 6000.0f  
 
 #ifndef __CUDACC__
@@ -111,7 +111,7 @@ struct BiPathState
     float4 eye_intersection;
 
     float4 light_normal;
-    float4 eye_normal; // w: s_t_type_pass
+    float4 eye_normal; // normal + w: s_t_type_pass
 
     float4 currentLight_hitData;
     float4 pre_light_dir;

@@ -41,7 +41,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const float aperture, const float imgPlaneSize, const float3 cam_pos,
     const float3 right, const float3 up, const float3 forward, const float3 p1,
-    const int4 screenParams)
+    const int4 screenParams, const uint* blueNoise)
 {
     int gid = threadIdx.x + blockIdx.x * blockDim.x;
     if (gid >= counters->constructionEyePos) return;
@@ -59,12 +59,26 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     uint y = jobIndex / scrhsize;
     y %= scrvsize;
 
+    uint sampleIdx = pass * MAX_LIGHTPATH + t;
+
     float3 posOnPixel, posOnLens;
+
     // depth of field camera for no filter
     float r0, r1, r2, r3;
-    uint seed = WangHash(jobIndex + R0);
-    r0 = RandomFloat(seed), r1 = RandomFloat(seed);
-    r2 = RandomFloat(seed), r3 = RandomFloat(seed);
+
+    if (false && sampleIdx < 256)
+    {
+        r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
+        r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
+        r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
+        r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
+    }
+    else
+    {
+        uint seed = WangHash(jobIndex + R0);
+        r0 = RandomFloat(seed), r1 = RandomFloat(seed);
+        r2 = RandomFloat(seed), r3 = RandomFloat(seed);
+    }
 
     posOnPixel = p1 + ((float)x + r0) * (right / (float)scrhsize) + ((float)y + r1) * (up / (float)scrvsize);
     posOnLens = RandomPointOnLens(r2, r3, cam_pos, aperture, right, up);
@@ -101,12 +115,12 @@ __host__ void constructionEyePos(int smcount, uint* constructEyeBuffer, BiPathSt
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const float aperture, const float imgPlaneSize, const float3 camPos,
     const float3 right, const float3 up, const float3 forward, const float3 p1,
-    const int4 screenParams)
+    const int4 screenParams, const uint* blueNoise)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     constructionEyePosKernel << < gridDim.x, 256 >> > (constructEyeBuffer,
         pathStateBuffer,visibilityRays,randomWalkRays,
-        R0, aperture,imgPlaneSize,camPos,right,up,forward,p1,screenParams);
+        R0, aperture,imgPlaneSize,camPos,right,up,forward,p1,screenParams, blueNoise);
 }
 
 // EOF

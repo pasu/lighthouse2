@@ -81,6 +81,12 @@ void constructionLightPosKernel(int smcount,
         r3 = RandomFloat(seed);
     }
 
+    /*
+    if (jobIndex == 1600 * 450 + 800)
+    {
+        printf("x:%d,y:%d,sampleIdx:%d,R:%f,%f,%f,%f\n", x, y, sampleIdx, r0, r1, r2, r3);
+    }
+    */
     float3 normal, throughput, lightDir;
     float lightPdf, pdfPos, pdfDir ;
 

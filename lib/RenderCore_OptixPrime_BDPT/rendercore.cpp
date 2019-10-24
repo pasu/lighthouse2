@@ -63,7 +63,7 @@ void constructionEyePos(int pathCount, uint* constructEyeBuffer,
     BiPathState* pathStateBuffer, Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const float aperture, const float imgPlaneSize, const float3 camPos,
     const float3 right, const float3 up, const float3 forward, const float3 p1,
-    const int4 screenParams);
+    const int4 screenParams, const uint* blueNoise);
 void extendEyePath(int pathCount, BiPathState* pathStateBuffer,
     Ray4* visibilityRays, Ray4* randomWalkRays,
     const uint R0, const uint* blueNoise, const float spreadAngle,
@@ -569,7 +569,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             pathDataBuffer->DevPtr(), visibilityRayBuffer->DevPtr(),
             randomWalkRayBuffer->DevPtr(), RandomUInt(camRNGseed),
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
-            GetScreenParams());
+            GetScreenParams(),blueNoise->DevPtr());
 
         extendEyePath(extendEyePathNum, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),

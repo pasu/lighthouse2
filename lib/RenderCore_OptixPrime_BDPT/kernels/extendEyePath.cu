@@ -46,7 +46,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = pass;
+    const uint sampleIndex = pass * MAX_LIGHTPATH + t;
     y %= scrvsize;
 
     float3 pos, dir;
@@ -85,8 +85,8 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     if (false && sampleIndex < 256)
     {
-        r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 0);
-        r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 1);
+        r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 4);
+        r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 5);
     }
     else
     {
@@ -117,6 +117,9 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         counters->probedTriid = primIdx,		// record primitive id at the selected pixel
         counters->probedDist = HIT_T;			// record primary ray hit distance
 
+    // initialize depth in accumulator for DOF shader
+    if (s == 1) accumulatorOnePass[jobIndex].w += (prim == NOHIT ? 10000 : HIT_T);
+
     float dE = 1.0f / pdf_area; // N0k
 
     float3 light_pos = make_float3(pathStateData[jobIndex].data2);
@@ -144,7 +147,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].data7 = make_float4(R, __int_as_float(randomWalkRayIdx));
     pathStateData[jobIndex].eye_normal = make_float4(fN, 0.0f);
 
-    pass++;
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
 
@@ -159,13 +161,13 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     {
         float3 pre_pos = pos;
         
-        if (dot(fN, dir) < 0) // single side light
+        //if (dot(fN, dir) < 0) // single side light
         {
             float3 L = throughput * shadingData.color;
 
             const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
             const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
-            const float pdfPos = 1.0f / tri.area;
+            const float pdfPos = 0.5f / tri.area; // rectangle = 2.0 * triangle
             const float p_rev = pickProb * pdfPos; // surface area
 
             float misWeight = 1.0f / (dE * p_rev + NKK);
@@ -207,11 +209,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
         if (bsdfPdf < EPSILON || isnan(bsdfPdf))
         {
-            misWeight = 0.0f;
+            return;
         }
         if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
         {
-            misWeight = 0.0f;
+            return;
         }
 
         float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
@@ -286,23 +288,18 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf)
             || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
         {
-            misWeight = 0.0f;
+            return;
         }
         if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
         {
-            misWeight = 0.0f;
+            return;
         }
+
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-        /*
-        if (jobIndex == 1600 * 450 + 800)
-        {
-            printf("MIS connection:%d,%d,%d,%f\n", s + t, s, t, misWeight);
-        }
-        */
     }
 }
 

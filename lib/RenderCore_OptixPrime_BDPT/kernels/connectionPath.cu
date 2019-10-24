@@ -132,8 +132,6 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
             // hit miss : beta 
             float3 throughput = make_float3(pathStateData[jobIndex].data5);
 
-            float3 fN = make_float3(pathStateData[jobIndex].eye_normal);
-            float cosTheta = fabs(dot(fN, hit_dir));
             float3 contribution = throughput * background;
 
             CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
