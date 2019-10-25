@@ -551,8 +551,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryVisibility));
     CHK_PRIME(rtpQueryCreate(*topLevel, RTP_QUERY_TYPE_CLOSEST, &queryRandomWalk));
 
-    uint extendEyePathNum = 0;
-    uint extendLightPathNum = 0;
+    uint extendEyePathNum = pathCount;
+    uint extendLightPathNum = pathCount;
 
     coreStats.totalExtensionRays = 0;
     coreStats.totalShadowRays = 0;
@@ -572,7 +572,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     counterBuffer->CopyToHost();
     Counters& counters = counterBuffer->HostPtr()[0];
 
-    do
+    while(true)
     {       
         
         constructionEyePos(pathCount, constructEyeBuffer->DevPtr(),
@@ -581,13 +581,13 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
             GetScreenParams(),blueNoise->DevPtr());
         
-        extendEyePath(extendEyePathNum, pathDataBuffer->DevPtr(),
+        extendEyePath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
             contributions->DevPtr(), accumulatorOnePass->DevPtr());
         
-        extendLightPath(extendLightPathNum, pathDataBuffer->DevPtr(),
+        extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.pos,
             view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr(),
@@ -598,16 +598,23 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         counterBuffer->CopyToHost();
         counters = counterBuffer->HostPtr()[0];
         uint queryNum = counters.randomWalkRays;// checkCount == 0 ? pathCount * 2 : extendLightPathNum * 2 + extendEyePathNum;
-        Timer t;
+
+        visNum = counters.contribution_count;
+        extendLightPathNum = counters.extendLightPath;
+        extendEyePathNum = counters.extendEyePath;
+
+        checkCount = extendLightPathNum + extendEyePathNum;
+        coreStats.totalExtensionRays += queryNum;
         
-        if (queryNum > 0)
-        {
-            CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, queryNum));
-            CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, queryNum));
-            CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
-            CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
-            CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
-        }
+        if (queryNum == 0)
+            break;
+
+        Timer t;                
+        CHK_PRIME(rtpBufferDescSetRange(randomWalkRaysDesc, 0, queryNum));
+        CHK_PRIME(rtpBufferDescSetRange(randomWalkHitsDesc, 0, queryNum));
+        CHK_PRIME(rtpQuerySetRays(queryRandomWalk, randomWalkRaysDesc));
+        CHK_PRIME(rtpQuerySetHits(queryRandomWalk, randomWalkHitsDesc));
+        CHK_PRIME(rtpQueryExecute(queryRandomWalk, RTP_QUERY_HINT_NONE));
 
         if (pathLength == 1) coreStats.traceTime0 = t.elapsed(), coreStats.primaryRayCount = counters.randomWalkRays;
         else if (pathLength == 2)  coreStats.traceTime1 = t.elapsed(), coreStats.bounce1RayCount = counters.randomWalkRays;
@@ -625,16 +632,8 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
             GetScreenParams(), 
             constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
 
-        counterBuffer->CopyToHost();
-        counters = counterBuffer->HostPtr()[0];
-
-        visNum = counters.contribution_count;
-        extendLightPathNum = counters.extendLightPath;
-        extendEyePathNum = counters.extendEyePath;
-
-        checkCount = extendLightPathNum + extendEyePathNum;
-        coreStats.totalExtensionRays += checkCount;
-
+        //counterBuffer->CopyToHost();
+        //counters = counterBuffer->HostPtr()[0];
         
         if (visNum + checkCount > maxVisNum)
         {
@@ -657,14 +656,14 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
         
-    } while (extendLightPathNum + extendEyePathNum > 0);
+    }// while (extendLightPathNum + extendEyePathNum > 0);
 
     CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, visNum));
     CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, visNum));
     CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
     CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
     CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
-
+    
     finalizeContribution(visNum, visibilityHitBuffer->DevPtr(),
         accumulatorOnePass->DevPtr(), contributions->DevPtr());
 
