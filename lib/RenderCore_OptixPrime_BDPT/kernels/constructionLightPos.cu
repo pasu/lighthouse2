@@ -104,9 +104,14 @@ void constructionLightPosKernel(int smcount,
     float dL = NKK / light_p;
     float light_pdf_solid = pdfDir;
 
-    const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
-    randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(pos, lightDir, normal, geometryEpsilon), 0);
-    randomWalkRays[randomWalkRayIdx].D4 = make_float4(lightDir, 1e34f);
+    uint randomWalkRayIdx = -1;
+    if (t < MAX_LIGHTPATH)
+    {
+        randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
+        randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(pos, lightDir, normal, geometryEpsilon), 0);
+        randomWalkRays[randomWalkRayIdx].D4 = make_float4(lightDir, 1e34f);
+    }
+    
 
     pathStateData[jobIndex].data0 = make_float4(throughput, dL);
     pathStateData[jobIndex].data1 = make_float4(beta, light_p);

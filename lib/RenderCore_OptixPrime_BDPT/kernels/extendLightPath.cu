@@ -173,10 +173,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     {
         beta *= (shading_normal_num / shading_normal_denom);
     }
-
-    const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
-    randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
-    randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
         
     t++;
 
@@ -190,9 +186,16 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
     float dL = (1.0f + eye_p * d) / pdf_area;
 
-    if (FLAGS & S_BOUNCED)
+    uint randomWalkRayIdx = -1;
+    if (pdf_solidangle < EPSILON || isnan(pdf_solidangle) || (FLAGS & S_BOUNCED))
     {
         pdf_solidangle = 0.0f; // terminate the eye path extension
+    }
+    else if (t < MAX_LIGHTPATH)
+    {
+        randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
+        randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
+        randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
     }
 
     if (!(FLAGS & S_SPECULAR)) FLAGS |= S_BOUNCED; else FLAGS |= S_VIASPECULAR;

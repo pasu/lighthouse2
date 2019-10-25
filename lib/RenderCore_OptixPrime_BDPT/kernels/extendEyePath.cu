@@ -118,10 +118,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
 
-    const uint randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
-    randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
-    randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
-
     s++;
 
     // the ray is from eye to the pixel directly
@@ -154,9 +150,16 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     }
 
-    if (FLAGS & S_BOUNCED)
+    uint randomWalkRayIdx = -1;
+    if (pdf_solidangle < EPSILON || isnan(pdf_solidangle) || (FLAGS & S_BOUNCED))
     {
         pdf_solidangle = 0.0f; // terminate the eye path extension
+    }
+    else if(s < MAX_EYEPATH)
+    {
+        randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
+        randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
+        randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
     }
 
     if (!(FLAGS & S_SPECULAR)) FLAGS |= S_BOUNCED; else FLAGS |= S_VIASPECULAR;
