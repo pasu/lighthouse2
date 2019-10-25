@@ -45,7 +45,10 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     int jobIndex = eyePathBuffer[gid];
 
     uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
+    
     uint data = __float_as_uint(pathStateData[jobIndex].light_normal.w);
+
+    int contribIdx = (data >> 8);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass, pass, s, t, type);
@@ -192,7 +195,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
             float misWeight = 1.0f / (dE * p_rev + NKK);
 
-            accumulatorOnePass[jobIndex] += make_float4((L*misWeight), 0.0f);
+            accumulatorOnePass[contribIdx] += make_float4((L*misWeight), 0.0f);
         }
 
         pathStateData[jobIndex].data6.w = 0;
@@ -239,7 +242,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
 
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
-        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
+        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
@@ -316,7 +319,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         }
 
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
-        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(jobIndex));
+        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);

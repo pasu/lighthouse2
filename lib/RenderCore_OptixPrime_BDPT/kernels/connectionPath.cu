@@ -34,8 +34,12 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
 
-    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
+    uint data = __float_as_uint(pathStateData[jobIndex].light_normal.w);
+    int contribIdx = (data >> 8);
 
+
+    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
+    
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass,pass,s,t,type);
 
@@ -139,7 +143,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
             float dE = pathStateData[jobIndex].data4.w;
             misWeight = 1.0f;// / (dE * (1.0f / (SCENE_AREA)) + NKK);
 
-            accumulatorOnePass[jobIndex] += make_float4((contribution * misWeight), 0.0f);
+            accumulatorOnePass[contribIdx] += make_float4((contribution * misWeight), 0.0f);
         }
     }
 

@@ -202,7 +202,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     pathStateData[jobIndex].data2 = make_float4(I, pdf_solidangle);
     pathStateData[jobIndex].data3 = make_float4(R, __int_as_float(randomWalkRayIdx));
 
-    pathStateData[jobIndex].light_normal = make_float4(fN, data);
+    pathStateData[jobIndex].light_normal = make_float4(fN, __uint_as_float(data));
     pathStateData[jobIndex].pre_light_dir = make_float4(dir, 0.0f);
     pathStateData[jobIndex].currentLight_hitData = hitData;
 
