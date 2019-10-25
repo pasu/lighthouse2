@@ -108,7 +108,7 @@ private:
     CoreBuffer<uint>* eyePathBuffer = 0;
     CoreBuffer<uint>* lightPathBuffer = 0;
 
-    CoreBuffer<BiPathState>* pathDataBuffer[2] = { 0, 0 };	// additional path state data
+    CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
     //CoreBuffer<BiPathState>* pathDataBufferExt = 0;
     CoreBuffer<Ray4>* visibilityRayBuffer = 0;         // buffer for visibility of connection
     CoreBuffer<uint>* visibilityHitBuffer = 0; // buffer for OptiX intersection results
