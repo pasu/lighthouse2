@@ -191,13 +191,12 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
-    /*
+    
     if ((FLAGS_L & S_BOUNCED))
     {
         pdf_ = 0.0f;; // terminate the eye path extension
     }
     else if (t < MAX_LIGHTPATH) // reduce this query
-    */
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);

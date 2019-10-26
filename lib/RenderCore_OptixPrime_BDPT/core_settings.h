@@ -43,9 +43,9 @@
 #define EXTEND_LIGHTPATH    2
 #define DEAD                3
 
-#define MAXPATHLENGTH		3
-#define MAX_EYEPATH MAXPATHLENGTH // eye starts from 0
-#define MAX_LIGHTPATH MAXPATHLENGTH // light starts from 1
+#define MAXPATHLENGTH	5               // [1,32)
+#define MAX_EYEPATH     MAXPATHLENGTH   // eye starts from 0
+#define MAX_LIGHTPATH   MAXPATHLENGTH   // light starts from 1
 #define NKK (MAX_LIGHTPATH*0.9)
 #define SCENE_AREA 6000.0f  
 

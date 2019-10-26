@@ -152,7 +152,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
-    /*
+    
     if ((FLAGS & S_BOUNCED))
     {
         pdf_ = 0.0f; // terminate the eye path extension
@@ -162,17 +162,12 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             pdf_ = pdf_solidangle;
         }
     }
-    else// if (s < MAX_EYEPATH)
-    */
+    else if (s < MAX_EYEPATH)
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
         randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
     }
-
-    // when s == MAX, this random walk may make contribution from skydome, 
-    // and when MAX is small, it could influence the result
-    // 
 
     if (!(FLAGS & S_SPECULAR)) FLAGS |= S_BOUNCED; else FLAGS |= S_VIASPECULAR;
 
@@ -333,11 +328,13 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             return;
         }
 
+        /*
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+        */
     }
 }
 

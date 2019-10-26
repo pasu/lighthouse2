@@ -573,8 +573,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     Counters& counters = counterBuffer->HostPtr()[0];
 
     while(true)
-    {       
-        
+    {
         constructionEyePos(pathCount, constructEyeBuffer->DevPtr(),
             pathDataBuffer->DevPtr(), visibilityRayBuffer->DevPtr(),
             randomWalkRayBuffer->DevPtr(), RandomUInt(camRNGseed),
@@ -656,7 +655,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
         
-    }// while (extendLightPathNum + extendEyePathNum > 0);
+    } // while (extendLightPathNum + extendEyePathNum > 0);
 
     CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, visNum));
     CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, visNum));
