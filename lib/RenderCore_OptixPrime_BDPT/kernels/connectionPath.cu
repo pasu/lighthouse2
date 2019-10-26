@@ -55,6 +55,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
     int eye_hit = -1;
     int eye_hit_idx = __float_as_int(pathStateData[jobIndex].data7.w);
     float eye_pdf = pathStateData[jobIndex].data6.w;
+    
     if (eye_pdf < EPSILON || isnan(eye_pdf))
     {
         eye_hit = -1;
@@ -125,7 +126,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
         type = EXTEND_EYEPATH; // temporary mark, later it should be DEAD
     }
 
-    if (eye_hit == -1 && type == EXTEND_EYEPATH/* (type == NEW_PATH || type == EXTEND_EYEPATH) */)
+    if (eye_hit == -1 && type == EXTEND_EYEPATH)
     {
         if (!(eye_pdf < EPSILON || isnan(eye_pdf)))
         {
@@ -141,7 +142,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
             FIXNAN_FLOAT3(contribution);
 
             float dE = pathStateData[jobIndex].data4.w;
-            misWeight = 1.0f;// / (dE * (1.0f / (SCENE_AREA)) + NKK);
+            misWeight = 1.0f;// / NKK;// / (dE * (1.0f / (SCENE_AREA)) + NKK);
 
             accumulatorOnePass[contribIdx] += make_float4((contribution * misWeight), 0.0f);
         }

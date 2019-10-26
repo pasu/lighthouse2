@@ -21,6 +21,8 @@
 #define HIT_T hitData.w
 #define RAY_O pos
 
+#define FLAGS_L data_L
+
 LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const float3 eye_pos,
     const float3 forward, const float3 light_pos, const float focalDistance,
     const float3 p1, const float3 right, const float3 up,
@@ -98,6 +100,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
     uint data = __float_as_uint(pathStateData[jobIndex].light_normal.w);
+    uint data_L = __float_as_uint(pathStateData[jobIndex].pre_light_dir.w);
 
     uint pass, type, t, s;
     getPathInfo(path_s_t_type_pass, pass, s, t, type);
@@ -143,7 +146,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         shadingData.color = make_float3(0.0f);
     }
 
-    if (ROUGHNESS < 0.01f) FLAGS |= S_SPECULAR; else FLAGS &= ~S_SPECULAR;
+    if (ROUGHNESS < 0.01f) FLAGS_L |= S_SPECULAR; else FLAGS_L &= ~S_SPECULAR;
 
     throughput = beta;
     pdf_area = pdf_solidangle * fabs(dot(-dir, fN)) / (HIT_T * HIT_T);
@@ -187,22 +190,25 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float dL = (1.0f + eye_p * d) / pdf_area;
 
     uint randomWalkRayIdx = -1;
-    if (pdf_solidangle < EPSILON || isnan(pdf_solidangle) || (FLAGS & S_BOUNCED))
+    float pdf_ = pdf_solidangle;
+    /*
+    if ((FLAGS_L & S_BOUNCED))
     {
-        pdf_solidangle = 0.0f; // terminate the eye path extension
+        pdf_ = 0.0f;; // terminate the eye path extension
     }
-    else if (t < MAX_LIGHTPATH)
+    else if (t < MAX_LIGHTPATH) // reduce this query
+    */
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
         randomWalkRays[randomWalkRayIdx].D4 = make_float4(R, 1e34f);
     }
 
-    if (!(FLAGS & S_SPECULAR)) FLAGS |= S_BOUNCED; else FLAGS |= S_VIASPECULAR;
+    if (!(FLAGS_L & S_SPECULAR)) FLAGS_L |= S_BOUNCED; else FLAGS_L |= S_VIASPECULAR;
 
     pathStateData[jobIndex].data0 = make_float4(throughput, dL);
     pathStateData[jobIndex].data1 = make_float4(beta, pdf_area);
-    pathStateData[jobIndex].data2 = make_float4(I, pdf_solidangle);
+    pathStateData[jobIndex].data2 = make_float4(I, pdf_);
     pathStateData[jobIndex].data3 = make_float4(R, __int_as_float(randomWalkRayIdx));
 
     pathStateData[jobIndex].light_normal = make_float4(fN, __uint_as_float(data));

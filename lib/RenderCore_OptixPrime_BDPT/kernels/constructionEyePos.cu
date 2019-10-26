@@ -48,13 +48,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
 
     int jobIndex = constructEyeBuffer[gid];
 
-    /*
-    int res = (__float_as_uint(pathStateData[jobIndex].light_normal.w) >> 8);
-    if (res != jobIndex)
-    {
-        printf("%d,%d\n",jobIndex,res);
-    }
-    */
+    float data = __uint_as_float(((uint)jobIndex << 8) + 1 /* S_SPECULAR */);
 
     uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
 
@@ -107,6 +101,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     pathStateData[jobIndex].data6 = make_float4(posOnLens, eye_pdf_solid);
     pathStateData[jobIndex].data7 = make_float4(rayDir, __int_as_float(randomWalkRayIdx));
     pathStateData[jobIndex].eye_normal = make_float4(normal, 0.0f);
+    pathStateData[jobIndex].light_normal.w = data;
 
     // when type == EXTEND_LIGHTPATH, reset the length of eye path
     s = 0;

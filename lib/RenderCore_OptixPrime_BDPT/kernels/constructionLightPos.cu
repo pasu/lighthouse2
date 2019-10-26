@@ -49,6 +49,7 @@ void constructionLightPosKernel(int smcount,
     if (jobIndex >= smcount) return;
 
     float data = __uint_as_float(((uint)jobIndex << 8) + 1 /* S_SPECULAR */);
+    float data_L = __uint_as_float(1 /* S_SPECULAR */);
 
     const int scrhsize = screenParams.x & 0xffff;
     const int scrvsize = screenParams.x >> 16;
@@ -119,6 +120,7 @@ void constructionLightPosKernel(int smcount,
     pathStateData[jobIndex].data3 = make_float4(lightDir, __int_as_float(randomWalkRayIdx));
 
     pathStateData[jobIndex].light_normal = make_float4(normal, data);
+    pathStateData[jobIndex].pre_light_dir.w = data_L;
 
     sampleIdx++;
     path_s_t_type_pass = (s << 27) + (t<<22) + (type<<19) + sampleIdx;
