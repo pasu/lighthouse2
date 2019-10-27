@@ -46,8 +46,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
     if (type == DEAD)
     {
         return;
-    }
-        
+    } 
 
     const float3 empty_color = make_float3(0.0f);
     float misWeight = 0.0f;

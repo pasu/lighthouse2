@@ -139,7 +139,8 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float3 N, iN, fN, T;
     const float3 I = RAY_O + HIT_T * dir;
     const float coneWidth = spreadAngle * HIT_T;
-    GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], INSTANCEIDX, shadingData, N, iN, fN, T);
+    GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], 
+        INSTANCEIDX, shadingData, N, iN, fN, T);
 
     if (shadingData.IsEmissive())
     {
@@ -189,6 +190,11 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     float eye_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
     float dL = (1.0f + eye_p * d) / pdf_area;
 
+    if (ROUGHNESS < 0.01f)
+    {
+        dL = eye_p * d / pdf_area;
+    }
+
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
     
@@ -216,6 +222,11 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
+
+    if (ROUGHNESS < 0.01f)
+    {
+        //return;
+    }
 
     float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;
@@ -255,13 +266,13 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         uint idx = y * scrhsize + x;
 
         float3 L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
-
+        /**/
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L*misWeight, __uint_as_float(idx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-
+        
         /*
         if (jobIndex == 1600*450+800)
         {

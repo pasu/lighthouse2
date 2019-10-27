@@ -148,6 +148,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         dE = (1.0f + light_p * d) / pdf_area;
 
+        // Equation [18]
+        if (ROUGHNESS < 0.01f)
+        {
+            dE = light_p * d / pdf_area;
+        }
     }
 
     uint randomWalkRayIdx = -1;
@@ -156,13 +161,15 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     if ((FLAGS & S_BOUNCED))
     {
         pdf_ = 0.0f; // terminate the eye path extension
+        
         if (MAX_LIGHTPATH == 1)
         {
             randomWalkRayIdx = -1;
             pdf_ = pdf_solidangle;
         }
+        
     }
-    else if (s < MAX_EYEPATH)
+    else //if (s < MAX_EYEPATH)
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
@@ -215,6 +222,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         if ((s + t) > MAXPATHLENGTH)
             return;
 
+        if (ROUGHNESS < 0.01f)
+        {
+            //return;
+        }
+
         float3 light2eye = eye2light;
         float length_l2e = dist;
 
@@ -251,11 +263,13 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
 
+        /**/
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
+        
         /*
         if (jobIndex == 1600 * 450 + 800)
         {
@@ -286,9 +300,18 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         ShadingData shadingData_light;
         float3 N_light, iN_light, fN_light, T_light;
+        const float coneWidth_light = spreadAngle * HIT_T;
 
-        GetShadingData(dir_light, HIT_U, HIT_V, coneWidth, instanceTriangles_eye[primIdx_light],
+        GetShadingData(dir_light, HIT_U, HIT_V, coneWidth_light, instanceTriangles_eye[primIdx_light],
             idx, shadingData_light, N_light, iN_light, fN_light, T_light);
+
+        float r_Light = (max(0.001f, CHAR2FLT(shadingData_light.parameters.x, 24)));
+
+        // specular
+        if (ROUGHNESS < 0.01f || r_Light < 0.01f)
+        {
+            return;
+        }
 
         float light_bsdfPdf;
         float3 sampledBSDF_t = EvaluateBSDF(shadingData_light, fN_light, T_light,
@@ -305,9 +328,14 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float3 throughput_light = make_float3(pathStateData[jobIndex].data0);
 
         // fabs keep safety
-        float cosTheta_eye = fabs(dot(fN, light2eye));
-        float cosTheta_light = fabs(dot(fN_light, light2eye* -1.0f));
+        float cosTheta_eye = (dot(fN, light2eye));
+        float cosTheta_light = (dot(fN_light, light2eye* -1.0f));
         float G = cosTheta_eye * cosTheta_light / (length_l2e * length_l2e);
+
+        if (cosTheta_eye<0.0f || cosTheta_light < 0.0f)
+        {
+            return;
+        }
 
         float3 L = throughput * sampledBSDF_s * sampledBSDF_t * throughput_light * G;
 
@@ -323,18 +351,16 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         {
             return;
         }
-        if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
+        if (pdf_ < EPSILON || isnan(pdf_))
         {
             return;
         }
-
-        /*
+        
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-        */
     }
 }
 

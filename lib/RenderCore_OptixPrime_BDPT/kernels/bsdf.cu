@@ -35,7 +35,7 @@
 
 //#include "bsdf.h"
 // simple reference bsdf: Lambert plus specular reflection
-//#include "bsdfs/lambert.h"
+#include "bsdfs/lambert.h"
 
 #else
 
@@ -46,7 +46,7 @@
 
 
 // EOF
-
+/*
 // Lambert BSDF
 // ----------------------------------------------------------------
 
@@ -78,5 +78,5 @@ __device__ static float3 SampleBSDF(const ShadingData& shadingData, float3 iN, c
         return shadingData.color * INVPI;
     }
 }
-
+*/
 // EOF
