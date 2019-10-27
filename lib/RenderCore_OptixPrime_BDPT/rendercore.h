@@ -106,7 +106,6 @@ private:
     CoreBuffer<uint>* constructEyeBuffer = 0;
 
     CoreBuffer<uint>* eyePathBuffer = 0;
-    CoreBuffer<uint>* lightPathBuffer = 0;
 
     CoreBuffer<BiPathState>* pathDataBuffer = 0;	// additional path state data
     //CoreBuffer<BiPathState>* pathDataBufferExt = 0;

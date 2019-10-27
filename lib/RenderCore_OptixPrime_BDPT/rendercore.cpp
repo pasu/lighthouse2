@@ -81,7 +81,7 @@ void connectionPath(int smcount, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer);
+    uint* constructEyeBuffer, uint* eyePathBuffer);
 
 void finalizeContribution(int smcount,
     uint* visibilityHitBuffer, float4* accumulatorOnePass,
@@ -214,7 +214,6 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         delete constructEyeBuffer;
         
         delete eyePathBuffer;
-        delete lightPathBuffer;
 
         delete pathDataBuffer;
 
@@ -235,7 +234,6 @@ void RenderCore::SetTarget( GLTexture* target, const uint spp )
         constructEyeBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
 
         eyePathBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
-        lightPathBuffer = new CoreBuffer<uint>(maxPixels * spp, ON_DEVICE);
 
         pathDataBuffer = new CoreBuffer<BiPathState>(maxPixels * spp, ON_DEVICE);
         
@@ -589,7 +587,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
             RandomUInt(camRNGseed), blueNoise->DevPtr(), view.pos,
-            view.spreadAngle, GetScreenParams(), lightPathBuffer->DevPtr(),
+            view.spreadAngle, GetScreenParams(), constructEyeBuffer->DevPtr(),
             contributions->DevPtr(),
             view.aperture, view.imagePlane, forward,
             view.focalDistance, view.p1, right, up);        
@@ -629,7 +627,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         connectionPath(pathCount, pathDataBuffer->DevPtr(), randomWalkHitBuffer->DevPtr(),
             accumulatorOnePass->DevPtr(),
             GetScreenParams(), 
-            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr(),lightPathBuffer->DevPtr());
+            constructEyeBuffer->DevPtr(),eyePathBuffer->DevPtr());
 
         //counterBuffer->CopyToHost();
         //counters = counterBuffer->HostPtr()[0];
@@ -690,7 +688,6 @@ void RenderCore::Shutdown()
     delete constructEyeBuffer;
 
     delete eyePathBuffer;
-    delete lightPathBuffer;
 
     delete pathDataBuffer;
 

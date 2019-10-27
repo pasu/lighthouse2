@@ -29,7 +29,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
     const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
+    uint* constructEyeBuffer, uint* eyePathBuffer)
 {
     int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
     if (jobIndex >= smcount) return;
@@ -114,7 +114,6 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
         constructEyeBuffer[eyeIdx] = jobIndex;
 
         const uint lightPIdx = atomicAdd(&counters->extendLightPath, 1);
-        lightPathBuffer[lightPIdx] = jobIndex;
     }
     else
     {
@@ -164,13 +163,13 @@ __host__ void connectionPath(int smcount,
     BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
     float4* accumulatorOnePass,
     const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer, uint* lightPathBuffer)
+    uint* constructEyeBuffer, uint* eyePathBuffer)
 {
 	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
     connectionPathKernel << < gridDim.x, 256 >> > (smcount,
         pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
         screenParams,
-        constructEyeBuffer, eyePathBuffer, lightPathBuffer);
+        constructEyeBuffer, eyePathBuffer);
 }
 
 // EOF
