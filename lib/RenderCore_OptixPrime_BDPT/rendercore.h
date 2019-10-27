@@ -77,7 +77,7 @@ private:
 	int maxPixels = 0;								// max screen size buffers can accomodate without a realloc
 	int currentSPP = 0;	
     int samplesTaken = 0;// spp count which will be accomodated without a realloc
-    uint maxVisNum = 1600 * 900 * 4;
+    uint maxVisNum = 1600 * 900 * VIS_BUFFERSIZE;
 	int2 probePos = make_int2( 0 );					// triangle picking; primary ray for this pixel copies its triid to coreStats.probedTriid
 	vector<CoreMesh*> meshes;						// list of meshes, to be referenced by the instances
 	vector<CoreInstance*> instances;					// list of instances: model id plus transform

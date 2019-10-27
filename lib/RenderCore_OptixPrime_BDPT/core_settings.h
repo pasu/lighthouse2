@@ -48,6 +48,7 @@
 #define MAX_LIGHTPATH   MAXPATHLENGTH   // light starts from 1
 #define NKK (MAX_LIGHTPATH*0.9)
 #define SCENE_AREA 6000.0f  
+#define VIS_BUFFERSIZE 5;
 
 
 
