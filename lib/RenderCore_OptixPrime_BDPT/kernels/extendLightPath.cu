@@ -62,11 +62,8 @@ LH2_DEVFUNC void Sample_Wi(const float aperture, const float imgPlaneSize, const
     if (x_offset<0 || x_offset > x_length
         || y_offset<0 || y_offset > y_length)
     {
-        //printf("%f,%f,%f,%f\n", x_offset, x_length,y_offset, y_length);
         return;
     }
-
-    //printf("in raster\n");
 
     u = x_offset / x_length;
     v = y_offset / y_length;
@@ -167,17 +164,25 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     }
     const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle,type);
 
-    beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
+    if (!(pdf_solidangle < EPSILON || isnan(pdf_solidangle)))
+    {
+        beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
+    }
+    
 
     // correct shading normal when it is importance
     float shading_normal_num = fabs(dot(dir, fN)) * fabs(dot(R, N));
     float shading_normal_denom = fabs(dot(dir, N)) * fabs(dot(R, fN));
 
-    if (shading_normal_denom != 0)
+    float fCorrectNormal = (shading_normal_num / shading_normal_denom);
+
+    if ((shading_normal_denom < EPSILON || isnan(shading_normal_denom)))
     {
-        beta *= (shading_normal_num / shading_normal_denom);
+        fCorrectNormal = 0.0f;        
     }
-        
+
+    beta *= fCorrectNormal;
+
     t++;
 
     float3 eye_pos = cam_pos;
@@ -198,9 +203,10 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
     
+    /**/
     if ((FLAGS_L & S_BOUNCED))
     {
-        pdf_ = 0.0f;; // terminate the eye path extension
+        pdf_ = 0.0f; // terminate the eye path extension
     }
     else if (t < MAX_LIGHTPATH) // reduce this query
     {
@@ -222,11 +228,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
-
-    if (ROUGHNESS < 0.01f)
-    {
-        //return;
-    }
 
     float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;
@@ -266,19 +267,12 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         uint idx = y * scrhsize + x;
 
         float3 L = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
-        /**/
+        
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L*misWeight, __uint_as_float(idx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-        
-        /*
-        if (jobIndex == 1600*450+800)
-        {
-            printf("MIS photon:%d,%d,%d,%f\n", s+t,s,t,misWeight);
-        }
-        */
     }
 }
 

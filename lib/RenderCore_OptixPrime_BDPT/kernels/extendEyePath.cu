@@ -109,14 +109,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     }
     const float3 bsdf = SampleBSDF(shadingData, fN, N, T, dir * -1.0f, r4, r5, R, pdf_solidangle, type);
 
-    /*
-    if (jobIndex == probePixelIdx && s == 1)
+    if (!(pdf_solidangle < EPSILON || isnan(pdf_solidangle)))
     {
-        printf("roughness:%f\n", ROUGHNESS);
+        beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
     }
-    */
-
-    beta *= bsdf * fabs(dot(fN, R)) / pdf_solidangle;
+    
 
     s++;
 
@@ -143,9 +140,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float3 normal = make_float3(pathStateData[jobIndex].eye_normal);
         float light_p = bsdfPdf * fabs(dot(normal, dir)) / (HIT_T * HIT_T);
 
-
-        //dE = (1.0f / pdf_area + d) ;
-
         dE = (1.0f + light_p * d) / pdf_area;
 
         // Equation [18]
@@ -157,7 +151,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
-    
+    /**/
     if ((FLAGS & S_BOUNCED))
     {
         pdf_ = 0.0f; // terminate the eye path extension
@@ -169,7 +163,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         }
         
     }
-    else //if (s < MAX_EYEPATH)
+    else if (s < MAX_EYEPATH)
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
@@ -222,16 +216,20 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         if ((s + t) > MAXPATHLENGTH)
             return;
 
-        if (ROUGHNESS < 0.01f)
-        {
-            //return;
-        }
-
         float3 light2eye = eye2light;
         float length_l2e = dist;
 
         float bsdfPdf;
         const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
+
+        if (bsdfPdf < EPSILON || isnan(bsdfPdf))
+        {
+            return;
+        }
+        if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
+        {
+            return;
+        }
 
         float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
         float light_pdf = pathStateData[jobIndex].data1.w;
@@ -252,30 +250,15 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float dL = pathStateData[jobIndex].data0.w;
 
         float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
-        if (bsdfPdf < EPSILON || isnan(bsdfPdf))
-        {
-            return;
-        }
-        if (pdf_solidangle < EPSILON || isnan(pdf_solidangle))
-        {
-            return;
-        }
+        //misWeight = 1.0;
 
         float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
-
-        /**/
+        
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
-        
-        /*
-        if (jobIndex == 1600 * 450 + 800)
-        {
-            printf("MIS explicit:%d,%d,%d,%f\n", s + t, s, t, misWeight);
-        }
-        */
     }
     else
     {
@@ -307,7 +290,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float r_Light = (max(0.001f, CHAR2FLT(shadingData_light.parameters.x, 24)));
 
-        // specular
+        // specular connection
         if (ROUGHNESS < 0.01f || r_Light < 0.01f)
         {
             return;
@@ -319,20 +302,37 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float shading_normal_num = fabs(dot(dir_light, fN_light)) * fabs(dot(light2eye, N_light));
         float shading_normal_denom = fabs(dot(dir_light, N_light)) * fabs(dot(light2eye, fN_light));
-
-        if (shading_normal_denom != 0)
+        float fCorrectNormal = (shading_normal_num / shading_normal_denom);
+        
+        /**/
+        if ((shading_normal_denom < EPSILON || isnan(shading_normal_denom)))
         {
-            sampledBSDF_t *= (shading_normal_num / shading_normal_denom);
+            fCorrectNormal = 0.0f;
         }
-
+        sampledBSDF_t *= fCorrectNormal;
+        
         float3 throughput_light = make_float3(pathStateData[jobIndex].data0);
 
         // fabs keep safety
         float cosTheta_eye = (dot(fN, light2eye));
-        float cosTheta_light = (dot(fN_light, light2eye* -1.0f));
+        float cosTheta_light = fabs(dot(fN_light, light2eye* -1.0f));
         float G = cosTheta_eye * cosTheta_light / (length_l2e * length_l2e);
 
-        if (cosTheta_eye<0.0f || cosTheta_light < 0.0f)
+        float cosTheta_eye2 = (dot(fN, dir * -1.0f));
+        float cosTheta_light2 = (dot(fN_light, dir_light * -1.0f));
+
+        if (cosTheta_eye2 < EPSILON || cosTheta_light2 < EPSILON || cosTheta_eye< EPSILON || cosTheta_light < EPSILON)
+        {
+            return;
+        }
+        
+        if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf)
+            || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
+        {
+            return;
+        }
+
+        if (pdf_ < EPSILON || isnan(pdf_))
         {
             return;
         }
@@ -346,22 +346,20 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
         //misWeight = 1.0f;
-        if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf)
-            || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
+        /*
+        if (s == 1 && t == 3)
         {
-            return;
+            
         }
-        if (pdf_ < EPSILON || isnan(pdf_))
-        {
-            return;
-        }
-        
+        */
+
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
     }
+
 }
 
 //  +-----------------------------------------------------------------------------+
