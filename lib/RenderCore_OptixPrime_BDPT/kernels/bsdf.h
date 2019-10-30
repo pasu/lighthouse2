@@ -33,9 +33,9 @@
 /**/
 #if 1
 
-#include "bsdf.h"
+//#include "bsdf.h"
 // simple reference bsdf: Lambert plus specular reflection
-//#include "bsdfs/lambert.h"
+#include "bsdfs/lambert.h"
 
 #else
 
