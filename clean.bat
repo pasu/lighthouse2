@@ -13,6 +13,8 @@ rem | Clean up RenderCore folders
 
 rd lib\RenderCore_OptixPrime\lib /S /Q
 rd lib\RenderCore_OptixPrime\x64 /S /Q
+rd lib\RenderCore_PrimeRef\lib /S /Q
+rd lib\RenderCore_PrimeRef\x64 /S /Q
 rd lib\RenderCore_OptixPrime_B\lib /S /Q
 rd lib\RenderCore_OptixPrime_B\x64 /S /Q
 rd lib\RenderCore_OptixRTX\lib /S /Q
@@ -24,6 +26,9 @@ del lib\RenderCore_OptixRTX_B\optix\*.ptx /S /Q
 rd lib\RenderCore_Optix7\lib /S /Q
 rd lib\RenderCore_Optix7\x64 /S /Q
 del lib\RenderCore_Optix7\optix\*.ptx /S /Q
+rd lib\RenderCore_Optix7Filter\lib /S /Q
+rd lib\RenderCore_Optix7Filter\x64 /S /Q
+del lib\RenderCore_Optix7Filter\optix\*.ptx /S /Q
 rd lib\RenderCore_SoftRasterizer\lib /S /Q
 rd lib\RenderCore_SoftRasterizer\x64 /S /Q
 rd lib\RenderCore_RTX_AO\lib /S /Q
@@ -33,6 +38,10 @@ rd lib\RenderCore_OpenCL\lib /S /Q
 rd lib\RenderCore_OpenCL\x64 /S /Q
 rd lib\RenderCore_Embree\x64 /S /Q
 rd lib\RenderCore_Embree\lib /S /Q
+rd lib\RenderCore_vulkan_rt\lib /S /Q
+rd lib\RenderCore_vulkan_rt\x64 /S /Q
+rd lib\RenderCore_OptixPrime_BDPT\lib /S /Q
+rd lib\RenderCore_OptixPrime_BDPT\x64 /S /Q
 rd coredlls\debug /S /Q
 rd coredlls\release /S /Q
 
@@ -72,7 +81,26 @@ del apps\imguiapp\*.iobj /Q
 del apps\imguiapp\*.ipdb /Q
 del apps\imguiapp\*.pdb /Q
 del apps\imguiapp\*.ilk /Q
-
+del apps\imguiapp\*.exp /Q
+del apps\imguiapp\*.lib /Q
+rd apps\rtxbvhreveng\x64 /S /Q
+del apps\rtxbvhreveng\data\sky_15.bin
+del apps\rtxbvhreveng\*.exe /Q
+del apps\rtxbvhreveng\*.iobj /Q
+del apps\rtxbvhreveng\*.ipdb /Q
+del apps\rtxbvhreveng\*.pdb /Q
+del apps\rtxbvhreveng\*.ilk /Q
+del apps\rtxbvhreveng\*.exp /Q
+del apps\rtxbvhreveng\*.lib /Q
+rd apps\tinyapplua\x64 /S /Q
+del apps\tinyapplua\data\sky_15.bin
+del apps\tinyapplua\*.exe /Q
+del apps\tinyapplua\*.iobj /Q
+del apps\tinyapplua\*.ipdb /Q
+del apps\tinyapplua\*.pdb /Q
+del apps\tinyapplua\*.ilk /Q
+del apps\tinyapplua\*.exp /Q
+del apps\tinyapplua\*.lib /Q
 rem | Clean up other components
 
 rd lib\RenderSystem\lib /S /Q
