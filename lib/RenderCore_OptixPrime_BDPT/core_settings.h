@@ -47,7 +47,14 @@
 #define MAX_EYEPATH     MAXPATHLENGTH   // eye starts from 0
 #define MAX_LIGHTPATH   (MAXPATHLENGTH)   // light starts from 1
 #define NKK (MAX_LIGHTPATH*0.9)
-#define SCENE_AREA 6000.0f  
+
+// for directional light
+#define DIRECTIONAL_LIGHT
+
+#define SCENE_CENTER (make_float3(0.0f))
+#define SCENE_RADIUS  100.0f
+#define SCENE_AREA (PI * SCENE_RADIUS * SCENE_RADIUS)  
+
 #define VIS_BUFFERSIZE 5;
 
 
