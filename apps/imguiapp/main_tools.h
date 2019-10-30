@@ -32,11 +32,13 @@ void ReshapeWindowCallback( GLFWwindow* window, int w, int h )
 	delete renderTarget;
 	renderTarget = new GLTexture( scrwidth, scrheight, GLTexture::FLOAT );
 	glViewport( 0, 0, scrwidth, scrheight );
-	renderer->SetTarget( renderTarget, 1 );
+	renderer->SetTarget( renderTarget, scrspp );
 }
 void KeyEventCallback( GLFWwindow* window, int key, int scancode, int action, int mods )
 {
 	if (key == GLFW_KEY_ESCAPE) running = false;
+	if (action == GLFW_PRESS) keystates[key] = true;
+	else if (action == GLFW_RELEASE) keystates[key] = false;
 }
 void CharEventCallback( GLFWwindow* window, uint code ) { /* nothing here yet */ }
 void WindowFocusCallback( GLFWwindow* window, int focused ) { hasFocus = (focused == GL_TRUE); }
@@ -45,6 +47,10 @@ void MousePosCallback( GLFWwindow* window, double x, double y )
 {
 	// set pixel probe pos for triangle picking
 	if (renderer) renderer->SetProbePos( make_int2( (int)x, (int)y ) );
+}
+void ErrorCallback( int error, const char*description )
+{
+	fprintf( stderr, "GLFW Error: %s\n", description );
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -55,12 +61,21 @@ void OpenConsole();
 void InitGLFW()
 {
 	// open a window
-	if (!glfwInit()) exit( EXIT_FAILURE );
-	glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-	glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
+	if (!glfwInit())
+	{
+		printf( "glfwInit failed.\n" );
+		exit( EXIT_FAILURE );
+	}
+	glfwSetErrorCallback( ErrorCallback );
+	glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
+	glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 5 );
 	glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 	glfwWindowHint( GLFW_RESIZABLE, GL_TRUE );
-	if (!(window = glfwCreateWindow( SCRWIDTH, SCRHEIGHT, "LightHouse v2.0", nullptr, nullptr ))) exit( EXIT_FAILURE );
+	if (!(window = glfwCreateWindow( SCRWIDTH, SCRHEIGHT, "LightHouse v2.0", nullptr, nullptr )))
+	{
+		printf( "glfwCreateWindow failed.\n" );
+		exit( EXIT_FAILURE );
+	}
 	glfwMakeContextCurrent( window );
 	// register callbacks
 	glfwSetFramebufferSizeCallback( window, ReshapeWindowCallback );
@@ -70,7 +85,11 @@ void InitGLFW()
 	glfwSetCursorPosCallback( window, MousePosCallback );
 	glfwSetCharCallback( window, CharEventCallback );
 	// initialize GLAD
-	if (!gladLoadGLLoader( (GLADloadproc)glfwGetProcAddress )) exit( EXIT_FAILURE );
+	if (!gladLoadGLLoader( (GLADloadproc)glfwGetProcAddress ))
+	{
+		printf( "gladLoadGLLoader failed.\n" );
+		exit( EXIT_FAILURE );
+	}
 	// prepare OpenGL state
 	glDisable( GL_DEPTH_TEST );
 	glDisable( GL_CULL_FACE );
@@ -96,6 +115,7 @@ void InitGLFW()
 //  +-----------------------------------------------------------------------------+
 void OpenConsole()
 {
+#ifdef _MSC_VER
 	CONSOLE_SCREEN_BUFFER_INFO coninfo;
 	AllocConsole();
 	GetConsoleScreenBufferInfo( GetStdHandle( STD_OUTPUT_HANDLE ), &coninfo );
@@ -107,6 +127,7 @@ void OpenConsole()
 	freopen_s( &file, "CON", "w", stderr );
 	SetWindowPos( GetConsoleWindow(), HWND_TOP, 0, 0, 1280, 800, 0 );
 	glfwShowWindow( window );
+#endif
 }
 
 //  +-----------------------------------------------------------------------------+
@@ -117,7 +138,11 @@ void InitImGui()
 {
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
+	if (!ImGui::CreateContext())
+	{
+		printf( "ImGui::CreateContext failed.\n" );
+		exit( EXIT_FAILURE );
+	}
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	ImGui::StyleColorsDark(); // or ImGui::StyleColorsClassic();

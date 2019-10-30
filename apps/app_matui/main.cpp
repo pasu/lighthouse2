@@ -31,17 +31,27 @@ static string materialFile;
 
 //  +-----------------------------------------------------------------------------+
 //  |  PrepareScene                                                               |
-//  |  Initialize a scene.                                                  LH2'19|
+//  |  Initialize a scene.                                                  LH2'19|S
 //  +-----------------------------------------------------------------------------+
 void PrepareScene()
 {
 	// initialize scene
-	int worldID = renderer->AddMesh( "materials.obj", "data\\mattest\\", 1.0f );
-	materialFile = string( "data\\mattest\\mattest_materials.xml" );
-	int lightMat = renderer->AddMaterial( make_float3( 10, 10, 10 ) );
-	int lightQuad = renderer->AddQuad( make_float3( 0, -1, 0 ), make_float3( 0, 26.0f, 0 ), 6.9f, 6.9f, lightMat );
+    materialFile = string("data\\mattest\\mattest_materials.xml");
+    int worldID = renderer->AddMesh("materials.obj", "data\\mattest\\", 1.0f);	
+    int lightMat = renderer->AddMaterial(make_float3(10, 10, 10));
+    int lightQuad = renderer->AddQuad(make_float3(0, -1, 0), make_float3(0, 26.0f, 0), 6.9f, 6.9f, lightMat);
+//     materialFile = string("data\\mattest\\glass_mattest_materials.xml");
+//     int worldID = renderer->AddMesh( "glass.obj", "data\\mattest\\", 1.0f );
+//  	int lightMat = renderer->AddMaterial( make_float3( 100, 100, 100) );
+//  	int lightQuad = renderer->AddQuad( make_float3( 0, -1, 0), make_float3( 0, 2.5f, 0.0f ), 0.3f, 0.3f, lightMat );
+
+//  int glassMat = renderer->AddMaterial(make_float3(0, 0, 1));
+//  int glassQuad = renderer->AddQuad(make_float3(0, 1, 0), make_float3(0, 5.0f, 5.0f), 5.9f, 5.9f, glassMat);
+
+
 	renderer->AddInstance( worldID );
 	renderer->AddInstance( lightQuad );
+    //renderer->AddInstance(glassQuad);
 	// read persistent material changes
 	renderer->DeserializeMaterials( materialFile.c_str() );
 }
@@ -115,8 +125,9 @@ int main()
 	InitGLFW();
 
 	// initialize renderer: pick one
-	renderer = RenderAPI::CreateRenderAPI( "rendercore_optix7.dll" );				// OPTIX7 core, best for RTX devices
-	// renderer = RenderAPI::CreateRenderAPI( "rendercore_optixprime_b.dll" );		// OPTIX PRIME, best for pre-RTX CUDA devices
+	//renderer = RenderAPI::CreateRenderAPI( "rendercore_optix7.dll" );				// OPTIX7 core, best for RTX devices
+    renderer = RenderAPI::CreateRenderAPI("rendercore_optixprime_bdpt.dll"); 
+    // renderer = RenderAPI::CreateRenderAPI( "rendercore_optixprime_b.dll" );		// OPTIX PRIME, best for pre-RTX CUDA devices
 	// renderer = RenderAPI::CreateRenderAPI( "rendercore_optixrtx_b.dll" );		// OPTIX6 core, for reference
 	// renderer = RenderAPI::CreateRenderAPI( "rendercore_softrasterizer.dll" );	// RASTERIZER, your only option if not on NVidia
 
