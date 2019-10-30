@@ -36,14 +36,20 @@ static string materialFile;
 void PrepareScene()
 {
 	// initialize scene
-    materialFile = string("data\\mattest\\mattest_materials.xml");
-    int worldID = renderer->AddMesh("materials.obj", "data\\mattest\\", 1.0f);	
-    int lightMat = renderer->AddMaterial(make_float3(10, 10, 10));
-    int lightQuad = renderer->AddQuad(make_float3(0, -1, 0), make_float3(0, 26.0f, 0), 6.9f, 6.9f, lightMat);
+//     materialFile = string("data\\mattest\\mattest_materials.xml");
+//     int worldID = renderer->AddMesh("materials.obj", "data\\mattest\\", 1.0f);	
+//     int lightMat = renderer->AddMaterial(make_float3(10, 10, 10));
+//     int lightQuad = renderer->AddQuad(make_float3(0, -1, 0), make_float3(0, 26.0f, 0), 6.9f, 6.9f, lightMat);
+    
 //     materialFile = string("data\\mattest\\glass_mattest_materials.xml");
 //     int worldID = renderer->AddMesh( "glass.obj", "data\\mattest\\", 1.0f );
 //  	int lightMat = renderer->AddMaterial( make_float3( 100, 100, 100) );
 //  	int lightQuad = renderer->AddQuad( make_float3( 0, -1, 0), make_float3( 0, 2.5f, 0.0f ), 0.3f, 0.3f, lightMat );
+
+    int worldID = renderer->AddMesh("scene01.obj", "data\\scene01\\", 1.0f);
+    materialFile = string("data\\scene01\\scene01.xml");
+    int lightMat = renderer->AddMaterial(make_float3(20, 20, 20));
+    int lightQuad = renderer->AddQuad(make_float3(0, -1, 0), make_float3(0, 9.f, 0), 2.f, 2.f, lightMat);
 
 //  int glassMat = renderer->AddMaterial(make_float3(0, 0, 1));
 //  int glassQuad = renderer->AddQuad(make_float3(0, 1, 0), make_float3(0, 5.0f, 5.0f), 5.9f, 5.9f, glassMat);
