@@ -55,7 +55,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>COREDLL_EXPORTS;WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir);../freeimage/inc;../zlib;../glfw/include;../glad/include;../CUDA;../half2.1.0;../tinyobjloader;../OptiX/include;../platform;.;../RenderSystem;../sharedBSDFs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir);../freeimage/inc;../zlib;../glfw/include;../glad/include;../CUDA;../half2.1.0;../tinyobjloader;../OptiX/include;../platform;.;../RenderSystem;../sharedBSDFs;../CUDA/shared_kernel_code</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
@@ -82,7 +82,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>COREDLL_EXPORTS;WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir);../freeimage/inc;../zlib;../glfw/include;../glad/include;../CUDA;../half2.1.0;../tinyobjloader;../OptiX/include;../platform;.;../RenderSystem;../sharedBSDFs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir);../freeimage/inc;../zlib;../glfw/include;../glad/include;../CUDA;../half2.1.0;../tinyobjloader;../OptiX/include;../platform;.;../RenderSystem;../sharedBSDFs;../CUDA/shared_kernel_code</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
       <DebugInformationFormat>None</DebugInformationFormat>
@@ -134,36 +134,25 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\CUDA\shared_host_code\interoptexture.h" />
+    <ClInclude Include="..\CUDA\shared_kernel_code\finalize_shared.h" />
+    <ClInclude Include="..\CUDA\shared_kernel_code\lights_shared.h" />
+    <ClInclude Include="..\CUDA\shared_kernel_code\material_shared.h" />
+    <ClInclude Include="..\CUDA\shared_kernel_code\sampling_shared.h" />
+    <ClInclude Include="..\CUDA\shared_kernel_code\tools_shared.h" />
     <ClInclude Include="core_api.h" />
     <ClInclude Include="core_settings.h" />
     <ClInclude Include="core_mesh.h" />
     <ClInclude Include="kernels\.cuda.h" />
-    <ClInclude Include="kernels\bsdfs\disney.h" />
-    <ClInclude Include="kernels\bsdfs\lambert.h" />
-    <ClInclude Include="kernels\bsdfs\plastic.h" />
+    <ClInclude Include="kernels\bsdf.h" />
+    <ClInclude Include="kernels\connectionPath.h" />
+    <ClInclude Include="kernels\constructionEyePos.h" />
+    <ClInclude Include="kernels\constructionLightPos.h" />
+    <ClInclude Include="kernels\extendEyePath.h" />
+    <ClInclude Include="kernels\extendLightPath.h" />
+    <ClInclude Include="kernels\finalizeContribution.h" />
     <ClInclude Include="rendercore.h" />
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="..\CUDA\shared_kernel_code\finalize_shared.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="..\CUDA\shared_kernel_code\lights_shared.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="..\CUDA\shared_kernel_code\material_shared.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="..\CUDA\shared_kernel_code\sampling_shared.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="..\CUDA\shared_kernel_code\tools_shared.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
     <CudaCompile Include="kernels\.cuda.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">compute_50,sm_50;compute_75,sm_75</CodeGeneration>
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Release|x64'">compute_50,sm_50;compute_75,sm_75</CodeGeneration>
@@ -171,40 +160,6 @@
       <AdditionalDeps Condition="'$(Configuration)|$(Platform)'=='Release|x64'">bsdf.cu,finalize.cu,lghts.cu,pathtrace.cu,tools.cu,.cuda.h;bsdfs/lambert.h;bsdfs/microfacet.h</AdditionalDeps>
       <GPUDebugInfo Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</GPUDebugInfo>
       <MaxRegCount Condition="'$(Configuration)|$(Platform)'=='Release|x64'">0</MaxRegCount>
-    </CudaCompile>
-    <CudaCompile Include="kernels\bsdf.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <Warning Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">W0</Warning>
-      <Warning Condition="'$(Configuration)|$(Platform)'=='Release|x64'">W0</Warning>
-    </CudaCompile>
-    <CudaCompile Include="kernels\compaction.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="kernels\connectionPath.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="kernels\constructionEyePos.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="kernels\constructionLightPos.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="kernels\extendEyePath.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="kernels\extendLightPath.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </CudaCompile>
-    <CudaCompile Include="kernels\finalizeContribution.cu">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </CudaCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

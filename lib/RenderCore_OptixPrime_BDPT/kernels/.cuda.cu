@@ -108,20 +108,21 @@ __host__ void InitCountersForPixels() { InitCountersForPixels_Kernel << <1, 32 >
 __host__ void SetCounters( Counters* p ) { cudaMemcpyToSymbol( counters, &p, sizeof( void* ) ); }
 
 // functional blocks
-#include "..\..\CUDA\shared_kernel_code\tools_shared.cu"
-#include "..\..\CUDA\shared_kernel_code\sampling_shared.cu"
-#include "..\..\CUDA\shared_kernel_code\material_shared.cu"
-#include "..\..\CUDA\shared_kernel_code\lights_shared.cu"
-#include "bsdf.cu"
-#include "..\..\CUDA\shared_kernel_code\finalize_shared.cu"
-#include "constructionLightPos.cu"
-#include "constructionEyePos.cu"
+#include "tools_shared.h"
+#include "sampling_shared.h"
+#include "material_shared.h"
+#include "lights_shared.h"
+#include "finalize_shared.h"
+#include "bsdf.h"
 
-#include "extendEyePath.cu"
-#include "extendLightPath.cu"
+#include "constructionLightPos.h"
+#include "constructionEyePos.h"
 
-#include "connectionPath.cu"
-#include "finalizeContribution.cu"
+#include "extendEyePath.h"
+#include "extendLightPath.h"
+
+#include "connectionPath.h"
+#include "finalizeContribution.h"
 } // namespace lh2core
 
 // EOF
