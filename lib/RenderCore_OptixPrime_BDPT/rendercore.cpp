@@ -655,12 +655,14 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         
     } // while (extendLightPathNum + extendEyePathNum > 0);
 
+    Timer t;
     CHK_PRIME(rtpBufferDescSetRange(visibilityRaysDesc, 0, visNum));
     CHK_PRIME(rtpBufferDescSetRange(visibilityHitsDesc, 0, visNum));
     CHK_PRIME(rtpQuerySetRays(queryVisibility, visibilityRaysDesc));
     CHK_PRIME(rtpQuerySetHits(queryVisibility, visibilityHitsDesc));
     CHK_PRIME(rtpQueryExecute(queryVisibility, RTP_QUERY_HINT_NONE));
-    
+    coreStats.shadowTraceTime = t.elapsed();
+
     finalizeContribution(visNum, visibilityHitBuffer->DevPtr(),
         accumulatorOnePass->DevPtr(), contributions->DevPtr());
 
