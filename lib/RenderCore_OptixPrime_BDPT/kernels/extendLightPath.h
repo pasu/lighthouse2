@@ -158,7 +158,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     }
     else
     {
-        uint seed = WangHash(jobIndex + R0);
+        uint seed = WangHash(jobIndex * 17 + R0);
         r4 = RandomFloat(seed);
         r5 = RandomFloat(seed);
     }
@@ -173,7 +173,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     // correct shading normal when it is importance
     float shading_normal_num = fabs(dot(dir, fN)) * fabs(dot(R, N));
     float shading_normal_denom = fabs(dot(dir, N)) * fabs(dot(R, fN));
-
+    /**/
     float fCorrectNormal = (shading_normal_num / shading_normal_denom);
 
     if ((shading_normal_denom < EPSILON || isnan(shading_normal_denom)))
@@ -202,13 +202,13 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
-    
     /**/
     if ((FLAGS_L & S_BOUNCED))
     {
         pdf_ = 0.0f; // terminate the eye path extension
     }
     else if (t < MAX_LIGHTPATH) // reduce this query
+    
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
@@ -261,7 +261,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         {
             return;
         }
-        //misWeight = 1.0f;
+
         uint x = (scrhsize * u + 0.5);
         uint y = (scrvsize * v + 0.5);
         uint idx = y * scrhsize + x;

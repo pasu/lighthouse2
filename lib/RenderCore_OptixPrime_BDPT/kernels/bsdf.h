@@ -31,25 +31,13 @@
 // It returns the BSDF itself, and also the sampled direction and probability density for this direction.
 // ----------------------------------------------------------------
 /**/
-#if 1
-
-//#include "bsdf.h"
-// simple reference bsdf: Lambert plus specular reflection
 #include "bsdfs/lambert.h"
 
-#else
-
-// Disney's principled BRDF, adapted from https://www.shadertoy.com/view/XdyyDd
-#include "bsdfs/disney.h"
-
-#endif
-
-
 // EOF
-/*
+
 // Lambert BSDF
 // ----------------------------------------------------------------
-
+/*
 // for debugging: Lambert brdf
 __device__ static float3 EvaluateBSDF(const ShadingData& shadingData, const float3 iN, const float3 T,
     const float3 wo, const float3 wi, float& pdf)

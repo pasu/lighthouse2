@@ -574,19 +574,19 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
     {
         constructionEyePos(pathCount, constructEyeBuffer->DevPtr(),
             pathDataBuffer->DevPtr(), visibilityRayBuffer->DevPtr(),
-            randomWalkRayBuffer->DevPtr(), RandomUInt(camRNGseed),
+            randomWalkRayBuffer->DevPtr(), samplesTaken * 7907 + pathLength * 91771,
             view.aperture, view.imagePlane, view.pos, right, up, forward, view.p1,
             GetScreenParams(),blueNoise->DevPtr());
         
         extendEyePath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
-            RandomUInt(camRNGseed), blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
+            samplesTaken * 7907 + pathLength * 91771, blueNoise->DevPtr(), view.spreadAngle, GetScreenParams(),
             probePos.x + scrwidth * probePos.y, eyePathBuffer->DevPtr(),
             contributions->DevPtr(), accumulatorOnePass->DevPtr());
         
         extendLightPath(pathCount, pathDataBuffer->DevPtr(),
             visibilityRayBuffer->DevPtr(), randomWalkRayBuffer->DevPtr(),
-            RandomUInt(camRNGseed), blueNoise->DevPtr(), view.pos,
+            samplesTaken * 7907 + pathLength * 91771, blueNoise->DevPtr(), view.pos,
             view.spreadAngle, GetScreenParams(), constructEyeBuffer->DevPtr(),
             contributions->DevPtr(),
             view.aperture, view.imagePlane, forward,
@@ -652,7 +652,7 @@ void RenderCore::Render( const ViewPyramid& view, const Convergence converge, co
         coreStats.probedInstid = counters.probedInstid;
         coreStats.probedTriid = counters.probedTriid;
         coreStats.probedDist = counters.probedDist;
-        
+    
     } // while (extendLightPathNum + extendEyePathNum > 0);
 
     Timer t;

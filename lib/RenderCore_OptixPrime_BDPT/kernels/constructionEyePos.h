@@ -77,7 +77,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     }
     else
     {
-        uint seed = WangHash(jobIndex + R0);
+        uint seed = WangHash(jobIndex * 17 + R0);
         r0 = RandomFloat(seed), r1 = RandomFloat(seed);
         r2 = RandomFloat(seed), r3 = RandomFloat(seed);
     }

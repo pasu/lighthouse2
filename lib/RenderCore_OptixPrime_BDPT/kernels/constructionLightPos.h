@@ -67,7 +67,7 @@ void constructionLightPosKernel(int smcount,
     float r0,r1,r2,r3;
 
     /* blue Noise is bad here*/
-    if (false && sampleIdx < 256)
+    if (false) // sampleIdx < 256
     {
         r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
         r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
@@ -84,12 +84,6 @@ void constructionLightPosKernel(int smcount,
         r3 = RandomFloat(seed);
     }
 
-    /*
-    if (jobIndex == 1600 * 450 + 800)
-    {
-        printf("x:%d,y:%d,sampleIdx:%d,R:%f,%f,%f,%f\n", x, y, sampleIdx, r0, r1, r2, r3);
-    }
-    */
     float3 normal, throughput, lightDir;
     float lightPdf, pdfPos, pdfDir ;
 
