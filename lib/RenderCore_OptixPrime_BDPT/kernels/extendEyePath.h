@@ -219,6 +219,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             return;
         }
 
+        if (length_l2e < EPSILON || isnan(length_l2e))
+        {
+            return;
+        }
+
         float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
         float light_pdf = pathStateData[jobIndex].data1.w;
 
@@ -255,6 +260,11 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float3 light2eye = eye2light;
         float length_l2e = dist;
+
+        if (length_l2e < EPSILON || isnan(length_l2e))
+        {
+            return;
+        }
 
         float eye_bsdfPdf;
         const float3 sampledBSDF_s = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, eye_bsdfPdf);
@@ -306,21 +316,13 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float cosTheta_light = fabs(dot(fN_light, light2eye* -1.0f));
         float G = cosTheta_eye * cosTheta_light / (length_l2e * length_l2e);
 
-        float cosTheta_eye2 = (dot(fN, dir * -1.0f));
-        float cosTheta_light2 = (dot(fN_light, dir_light * -1.0f));
-
-        if (cosTheta_eye2 < EPSILON || cosTheta_light2 < EPSILON || cosTheta_eye< EPSILON || cosTheta_light < EPSILON)
+        if (cosTheta_eye< EPSILON || cosTheta_light < EPSILON)
         {
             return;
         }
         
         if (eye_bsdfPdf < EPSILON || isnan(eye_bsdfPdf)
             || light_bsdfPdf < EPSILON || isnan(light_bsdfPdf))
-        {
-            return;
-        }
-
-        if (pdf_ < EPSILON || isnan(pdf_))
         {
             return;
         }

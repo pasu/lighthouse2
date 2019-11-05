@@ -139,11 +139,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
     GetShadingData(dir, HIT_U, HIT_V, coneWidth, instanceTriangles[primIdx], 
         INSTANCEIDX, shadingData, N, iN, fN, T);
 
-    if (shadingData.IsEmissive())
-    {
-        shadingData.color = make_float3(0.0f);
-    }
-
     if (ROUGHNESS < 0.01f) FLAGS_L |= S_SPECULAR; else FLAGS_L &= ~S_SPECULAR;
 
     throughput = beta;
@@ -208,7 +203,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         pdf_ = 0.0f; // terminate the eye path extension
     }
     else if (t < MAX_LIGHTPATH) // reduce this query
-    
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
@@ -228,6 +222,15 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
     path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
     pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
+
+    /**/
+    if (shadingData.IsEmissive())
+    {
+        pathStateData[jobIndex].data2.w = 0;
+        pathStateData[jobIndex].data6.w = 0;
+        return;
+    }
+    
 
     float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;
