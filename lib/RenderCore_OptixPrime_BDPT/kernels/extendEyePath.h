@@ -152,12 +152,14 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
     uint randomWalkRayIdx = -1;
     float pdf_ = pdf_solidangle;
-    /**/
+
+#ifdef FLAGS_ON
     if ((FLAGS & S_BOUNCED))
     {
         pdf_ = 0.0f; // terminate the eye path extension        
     }
     else if (s < MAX_EYEPATH)     
+#endif
     {
         randomWalkRayIdx = atomicAdd(&counters->randomWalkRays, 1);
         randomWalkRays[randomWalkRayIdx].O4 = make_float4(SafeOrigin(I, R, N, geometryEpsilon), 0);
@@ -214,12 +216,18 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float bsdfPdf;
         const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
 
+        // specular connection
+        if (ROUGHNESS < 0.01f)
+        {
+            return;
+        }
+
         if (bsdfPdf < EPSILON || isnan(bsdfPdf))
         {
             return;
         }
 
-        if (length_l2e < EPSILON || isnan(length_l2e))
+        if (length_l2e < SCENE_RADIUS * RadiusFactor)
         {
             return;
         }
@@ -261,7 +269,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float3 light2eye = eye2light;
         float length_l2e = dist;
 
-        if (length_l2e < EPSILON || isnan(length_l2e))
+        if (length_l2e < SCENE_RADIUS * RadiusFactor)
         {
             return;
         }

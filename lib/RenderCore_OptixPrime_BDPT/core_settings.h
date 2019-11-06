@@ -38,14 +38,16 @@
 #define APPLYSAFENORMALS	if (dot( N, wi ) <= 0) pdf = 0;
 #define NOHIT				-1
 
+//#define FLAGS_ON
+
 #define NEW_PATH            0
 #define EXTEND_EYEPATH      1
 #define EXTEND_LIGHTPATH    2
 #define DEAD                3
 
 // The length of eye and light must be the same, otherwise, the sum of MIS is not correct
-#define MAXPATHLENGTH	4               // [1,32)
-#define MAX_EYEPATH     MAXPATHLENGTH   // eye starts from 0
+#define MAXPATHLENGTH	5               // [1,32)
+#define MAX_EYEPATH     (MAXPATHLENGTH)   // eye starts from 0
 #define MAX_LIGHTPATH   (MAXPATHLENGTH)   // light starts from 1
 #define NKK (MAX_LIGHTPATH)
 
@@ -55,6 +57,8 @@
 #define SCENE_CENTER (make_float3(0.0f))
 #define SCENE_RADIUS  100.0f
 #define SCENE_AREA (PI * SCENE_RADIUS * SCENE_RADIUS)  
+
+#define RadiusFactor 0.003f
 
 #define VIS_BUFFERSIZE 5;
 
