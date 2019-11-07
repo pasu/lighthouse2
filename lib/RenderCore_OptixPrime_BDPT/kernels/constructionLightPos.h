@@ -66,17 +66,21 @@ void constructionLightPosKernel(int smcount,
 
     float r0,r1,r2,r3;
 
+    uint seed = WangHash(jobIndex + R0);
     /* blue Noise is bad here*/
-    if (false) // sampleIdx < 256
+    if (BLUENOISER_ON && sampleIdx < 256) // sampleIdx < 256
     {
         r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
         r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
-        r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
-        r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
+        //r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
+        //r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
+
+        r2 = RandomFloat(seed);
+        r3 = RandomFloat(seed);
     }
     else    
     {
-        uint seed = WangHash(jobIndex + R0);
+        
 
         r0 = RandomFloat(seed);
         r1 = RandomFloat(seed);

@@ -100,7 +100,7 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
     }
 
     int idxPixel = -1;
-    if (eye_hit != -1 && s < MAX_EYEPATH)
+    if (eye_hit != -1 && s+t < MAX_EYEPATH)
     {
         type = EXTEND_EYEPATH;
         const uint eyePIdx = atomicAdd(&counters->extendEyePath, 1);

@@ -61,19 +61,19 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     uint y = jobIndex / scrhsize;
     y %= scrvsize;
 
-    uint sampleIdx = pass * MAX_LIGHTPATH + t;
+    uint sampleIdx = pass;
 
     float3 posOnPixel, posOnLens;
 
     // depth of field camera for no filter
     float r0, r1, r2, r3;
 
-    if (sampleIdx < 256)
+    if (BLUENOISER_ON && sampleIdx < 256 )
     {
-        r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 0);
-        r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 1);
-        r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
-        r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
+        r0 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 2);
+        r1 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 3);
+        r2 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 4);
+        r3 = blueNoiseSampler(blueNoise, x, y, sampleIdx, 5);
     }
     else
     {

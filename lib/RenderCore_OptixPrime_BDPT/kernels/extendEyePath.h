@@ -57,7 +57,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = pass * MAX_LIGHTPATH + t;
+    const uint sampleIndex = pass;
     y %= scrvsize;
 
     float3 pos, dir;
@@ -96,10 +96,10 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     float3 R;
     float r4, r5;
 
-    if (sampleIndex < 256)
+    if (BLUENOISER_ON && sampleIndex < 256 )
     {
-        r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 4);
-        r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 5);
+        r4 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 6);
+        r5 = blueNoiseSampler(blueNoise, x, y, sampleIndex, 7);
     }
     else
     {
@@ -191,7 +191,10 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         
         if (dot(N, dir) < 0) // single side light
         {
-            float3 L = throughput * shadingData.color;
+            float3 contribution = throughput * shadingData.color;
+
+            CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+            FIXNAN_FLOAT3(contribution);
 
             const CoreTri& tri = (const CoreTri&)instanceTriangles[primIdx];
             const float pickProb = LightPickProb(tri.ltriIdx, pre_pos, dir, eye_pos);
@@ -200,7 +203,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
             // Equation [16] when s == k
             float misWeight = 1.0f / (dE * p_rev + NKK);
-            accumulatorOnePass[contribIdx] += make_float4((L*misWeight), 0.0f);
+            accumulatorOnePass[contribIdx] += make_float4((contribution*misWeight), 0.0f);
         }
 
         pathStateData[jobIndex].data6.w = 0;
@@ -227,11 +230,6 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             return;
         }
 
-        if (length_l2e < SCENE_RADIUS * RadiusFactor)
-        {
-            return;
-        }
-
         float3 light_throughput = make_float3(pathStateData[jobIndex].data0);
         float light_pdf = pathStateData[jobIndex].data1.w;
 
@@ -252,10 +250,13 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
 
         float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
 
-        float3 L = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+        float3 contribution = throughput * sampledBSDF * light_throughput * (1.0f / light_pdf)  * cosTheta;
+
+        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+        FIXNAN_FLOAT3(contribution);
         
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
-        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
+        contribution_buffer[contib_idx] = make_float4(contribution * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
@@ -335,7 +336,10 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
             return;
         }
 
-        float3 L = throughput * sampledBSDF_s * sampledBSDF_t * throughput_light * G;
+        float3 contribution = throughput * sampledBSDF_s * sampledBSDF_t * throughput_light * G;
+
+        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+        FIXNAN_FLOAT3(contribution);
 
         float p_forward = eye_bsdfPdf * cosTheta_light / (length_l2e * length_l2e);
         float p_rev = light_bsdfPdf * cosTheta_eye / (length_l2e * length_l2e);
@@ -345,7 +349,7 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float misWeight = 1.0 / (dE * p_rev + 1 + dL * p_forward);
 
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
-        contribution_buffer[contib_idx] = make_float4(L * misWeight, __uint_as_float(contribIdx));
+        contribution_buffer[contib_idx] = make_float4(contribution * misWeight, __uint_as_float(contribIdx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(eye_pos, eye2light, eye_normal, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
