@@ -61,7 +61,7 @@ void constructionEyePosKernel(uint* constructEyeBuffer, BiPathState* pathStateDa
     uint y = jobIndex / scrhsize;
     y %= scrvsize;
 
-    uint sampleIdx = pass;
+    uint sampleIdx = pass * MAX_LIGHTPATH + t - 1;
 
     float3 posOnPixel, posOnLens;
 

@@ -57,7 +57,8 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
     const int scrvsize = screenParams.x >> 16;
     const uint x = jobIndex % scrhsize;
     uint y = jobIndex / scrhsize;
-    const uint sampleIndex = pass;
+
+    const uint sampleIndex = pass * MAX_LIGHTPATH + t - 1;
     y %= scrvsize;
 
     float3 pos, dir;
