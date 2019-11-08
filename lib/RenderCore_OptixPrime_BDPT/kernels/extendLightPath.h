@@ -271,8 +271,12 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
 
         float3 contribution = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
 
+        contribution = contribution * misWeight;
+        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
+        FIXNAN_FLOAT3(contribution);
+
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
-        contribution_buffer[contib_idx] = make_float4(contribution*misWeight, __uint_as_float(idx));
+        contribution_buffer[contib_idx] = make_float4(contribution, __uint_as_float(idx));
 
         visibilityRays[contib_idx].O4 = make_float4(SafeOrigin(light_pos, eye2light, fN, geometryEpsilon), 0);
         visibilityRays[contib_idx].D4 = make_float4(eye2light, dist - 2 * geometryEpsilon);
