@@ -230,13 +230,7 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         pathStateData[jobIndex].data2.w = 0;
         pathStateData[jobIndex].data6.w = 0;
         return;
-    }
-
-    if (ROUGHNESS < 0.01f)
-    {
-        return;
-    }
-    
+    }    
 
     float3 light_pos = I;
     float3 eye2light = eye_pos - light_pos;

@@ -221,10 +221,12 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         const float3 sampledBSDF = EvaluateBSDF(shadingData, fN, T, dir * -1.0f, light2eye, bsdfPdf);
 
         // specular connection
+        /*
         if (ROUGHNESS < 0.01f)
         {
             return;
         }
+        */
 
         if (bsdfPdf < EPSILON || isnan(bsdfPdf))
         {
@@ -299,10 +301,12 @@ void extendEyePathKernel(int smcount, BiPathState* pathStateData,
         float r_Light = (max(0.001f, CHAR2FLT(shadingData_light.parameters.x, 24)));
 
         // specular connection
+        /*
         if (ROUGHNESS < 0.01f || r_Light < 0.01f)
         {
             return;
         }
+        */
 
         float light_bsdfPdf;
         float3 sampledBSDF_t = EvaluateBSDF(shadingData_light, fN_light, T_light,

@@ -39,6 +39,7 @@
 #define NOHIT				-1
 
 //#define FLAGS_ON
+#define BLUENOISER_ON (true) // only for the first extension of eye path
 
 #define NEW_PATH            0
 #define EXTEND_EYEPATH      1
@@ -58,7 +59,7 @@
 #define SCENE_RADIUS  100.0f
 #define SCENE_AREA (PI * SCENE_RADIUS * SCENE_RADIUS)  
 
-#define RadiusFactor 0.003f
+#define RadiusFactor 0.01f
 
 #define VIS_BUFFERSIZE 5;
 
