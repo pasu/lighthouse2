@@ -276,9 +276,6 @@ void extendLightPathKernel(int smcount, BiPathState* pathStateData,
         uint idx = y * scrhsize + x;
 
         float3 contribution = light_throught * sampledBSDF * (throughput_eye / pdf_eye) * cosTheta;
-        
-        CLAMPINTENSITY; // limit magnitude of thoughput vector to combat fireflies
-        FIXNAN_FLOAT3(contribution);
 
         const uint contib_idx = atomicAdd(&counters->contribution_count, 1);
         contribution_buffer[contib_idx] = make_float4(contribution*misWeight, __uint_as_float(idx));
