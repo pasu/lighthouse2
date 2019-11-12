@@ -24,7 +24,7 @@ static Shader* shader = 0;
 static uint scrwidth = 0, scrheight = 0, scrspp = 1;
 static bool camMoved = false, spaceDown = false, hasFocus = true, running = true, animPaused = false;
 static std::bitset<1024> keystates;
-
+static string materialFile;
 #include "main_tools.h"
 
 //  +-----------------------------------------------------------------------------+
@@ -33,17 +33,39 @@ static std::bitset<1024> keystates;
 //  +-----------------------------------------------------------------------------+
 void PrepareScene()
 {
-	// initialize scene
-	renderer->AddScene( "scene.gltf", "data/pica/", mat4::Translate( 0, -10.2f, 0 ) );
-	// int meshIdx = renderer->AddMesh( "rungholt.obj", "data/rungholt/", 1.0f );
-	// renderer->AddInstance( meshIdx );
-	// renderer->AddScene( "CesiumMan.glb", "data/", mat4::Translate( 0, -2, -9 ) );
-	// renderer->AddScene( "project_polly.glb", "data/", mat4::Translate( 4.5f, -5.45f, -5.2f ) * mat4::Scale( 2 ) );
-	int rootNode = renderer->FindNode( "RootNode (gltf orientation matrix)" );
+    ///////////////////////////////////////
+	// initialize scene1
+	renderer->AddScene( "scene.gltf", "data/pica/", mat4::Translate( 0, -10.2f, 0 ) );	
+    int rootNode = renderer->FindNode( "RootNode (gltf orientation matrix)" );
 	renderer->SetNodeTransform( rootNode, mat4::RotateX( -PI / 2 ) );
-	int lightMat = renderer->AddMaterial( make_float3( 100, 100, 80 ) );
-	int lightQuad = renderer->AddQuad( make_float3( 0, -1, 0 ), make_float3( 0, 26.0f, 0 ), 6.9f, 6.9f, lightMat );
-	int lightInst = renderer->AddInstance( lightQuad );
+	
+    int lightMat = renderer->AddMaterial( make_float3( 100, 100, 80) );
+ 	int lightQuad = renderer->AddQuad( make_float3( 0, -1, 0 ), make_float3( 0, 26.0f, 0 ), 6.9f, 6.9f, lightMat );
+ 	int lightInst = renderer->AddInstance( lightQuad );
+    //////////////////////////////////////////////////
+
+    ///////////////////////////////////////
+    // initialize scene2: one light source in the hole
+//     renderer->AddScene("scene.gltf", "data/pica/", mat4::Translate(0, -10.2f, 0));
+//     int rootNode = renderer->FindNode("RootNode (gltf orientation matrix)");
+//     renderer->SetNodeTransform(rootNode, mat4::RotateX(-PI / 2));
+// 
+//     int lightMat = renderer->AddMaterial(make_float3(500, 500, 400));
+//     int lightQuad = renderer->AddQuad(make_float3(0.15188693, -0.32204545, 0.93446094), make_float3(-12.938412, -5.0068984, -25.725601), 1.9f, 1.9f, lightMat);
+//     int lightInst = renderer->AddInstance(lightQuad);
+    //////////////////////////////////////////////////
+
+    ///////////////////////////////////////
+    // initialize scene3: caustic with diverse materials
+//     materialFile = string("data\\mattest\\glass_mattest_materials.xml");
+//     int worldID = renderer->AddMesh("glass.obj", "data\\mattest\\", 1.0f);
+//     int lightMat = renderer->AddMaterial(make_float3(100, 100, 100));
+//     int lightQuad = renderer->AddQuad(make_float3(0, -1, 0), make_float3(0, 2.5f, 0.0f), 0.3f, 0.3f, lightMat);
+// 
+//     renderer->AddInstance(worldID);
+//     renderer->AddInstance(lightQuad);
+//     renderer->DeserializeMaterials(materialFile.c_str());
+    //////////////////////////////////////////////////
 }
 
 //  +-----------------------------------------------------------------------------+
