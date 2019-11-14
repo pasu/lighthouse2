@@ -38,7 +38,7 @@ void finalizeContributionKernel(int smcount,
         
         color.w = 0.0f;
 
-        //accumulatorOnePass[jobIndex] += color;
+        // accumulatorOnePass[jobIndex] += color;
 
         atomicAdd(&(accumulatorOnePass[jobIndex].x), color.x);
         atomicAdd(&(accumulatorOnePass[jobIndex].y), color.y);

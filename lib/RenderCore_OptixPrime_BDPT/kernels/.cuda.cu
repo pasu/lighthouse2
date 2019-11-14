@@ -62,10 +62,10 @@ __host__ void SetClampValue( float c ) { cudaMemcpyToSymbol( clampValue, &c, siz
 
 // BDPT
 /////////////////////////////////////////////////
-LH2_DEVFUNC void copyPathState(const BiPathState orgin, BiPathState& target)
+/* LH2_DEVFUNC void copyPathState(const BiPathState orgin, BiPathState& target)
 {
     memcpy(&target, &orgin, sizeof(BiPathState));
-}
+} */
 
 __global__ void InitIndexForConstructionLight_Kernel(int pathCount, uint* construcLightBuffer)
 {

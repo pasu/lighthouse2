@@ -24,107 +24,82 @@
 //  |  generateEyeRaysKernel                                                      |
 //  |  Generate primary rays, to be traced by Optix Prime.                  LH2'19|
 //  +-----------------------------------------------------------------------------+
-__global__  __launch_bounds__( 256 , 1 )
-void connectionPathKernel(int smcount, BiPathState* pathStateData,
-    const Intersection* randomWalkHitBuffer,
-    float4* accumulatorOnePass,
-    const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer)
+__global__  __launch_bounds__( 256, 1 )
+void connectionPathKernel( int smcount, BiPathState* pathStateData,
+	const Intersection* randomWalkHitBuffer,
+	float4* accumulatorOnePass,
+	const int4 screenParams,
+	uint* constructEyeBuffer, uint* eyePathBuffer )
 {
-    int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
-    if (jobIndex >= smcount) return;
+	int jobIndex = threadIdx.x + blockIdx.x * blockDim.x;
+	if (jobIndex >= smcount) return;
 
-    uint data = __float_as_uint(pathStateData[jobIndex].light_normal.w);
-    int contribIdx = (data >> 8);
+	uint data = __float_as_uint( pathStateData[jobIndex].light_normal.w );
+	int contribIdx = (data >> 8);
 
 
-    uint path_s_t_type_pass = __float_as_uint(pathStateData[jobIndex].eye_normal.w);
-    
-    uint pass, type, t, s;
-    getPathInfo(path_s_t_type_pass,pass,s,t,type);
+	uint path_s_t_type_pass = __float_as_uint( pathStateData[jobIndex].eye_normal.w );
 
-    if (type == DEAD)
-    {
-        return;
-    } 
+	uint pass, type, t, s;
+	getPathInfo( path_s_t_type_pass, pass, s, t, type );
 
-    const float3 empty_color = make_float3(0.0f);
-    float misWeight = 0.0f;
-    
-    int eye_hit = -1;
-    int eye_hit_idx = __float_as_int(pathStateData[jobIndex].data7.w);
-    float eye_pdf = pathStateData[jobIndex].data6.w;
-    
-    if (eye_pdf < EPSILON || isnan(eye_pdf))
-    {
-        eye_hit = -1;
-        pathStateData[jobIndex].data7.w = __int_as_float(-1);
-    }
-    else if (eye_hit_idx > -1)
-    {
-        const Intersection hd = randomWalkHitBuffer[eye_hit_idx];
+	if (type == DEAD)
+	{
+		return;
+	}
 
-        eye_hit = hd.triid;
+	const float3 empty_color = make_float3( 0.0f );
+	float misWeight = 0.0f;
 
-        const float4 hitData = make_float4(hd.u, hd.v, __int_as_float(hd.triid + (hd.triid == -1 ? 0 : (hd.instid << 20))), hd.t);
-        pathStateData[jobIndex].eye_intersection = hitData;
+	int eye_hit = -1;
+	int eye_hit_idx = __float_as_int( pathStateData[jobIndex].data7.w );
+	float eye_pdf = pathStateData[jobIndex].data6.w;
 
-        pathStateData[jobIndex].data7.w = __int_as_float(-1);
-    }
+	if (eye_pdf < EPSILON || isnan( eye_pdf ))
+	{
+		eye_hit = -1;
+		pathStateData[jobIndex].data7.w = __int_as_float( -1 );
+	}
+	else if (eye_hit_idx > -1)
+	{
+		const Intersection hd = randomWalkHitBuffer[eye_hit_idx];
 
-    int light_hit = -1;
-    int light_hit_idx = __float_as_int(pathStateData[jobIndex].data3.w);
-    float light_pdf_test = pathStateData[jobIndex].data2.w;
-    if (light_pdf_test < EPSILON || isnan(light_pdf_test))
-    {
-        light_hit = -1;
-        pathStateData[jobIndex].data3.w = __int_as_float(-1);
-    }
-    else if (light_hit_idx > -1)
-    {
-        const Intersection hd = randomWalkHitBuffer[light_hit_idx];
-        light_hit = hd.triid;
-        const float4 hitData = make_float4(hd.u, hd.v, __int_as_float(hd.triid + (hd.triid == -1 ? 0 : (hd.instid << 20))), hd.t);
+		eye_hit = hd.triid;
 
-        pathStateData[jobIndex].light_intersection = hitData;
-        pathStateData[jobIndex].data3.w = __int_as_float(-1);
-    }
-    else
-    {
-        const float4 hitData = pathStateData[jobIndex].light_intersection;
+		const float4 hitData = make_float4( hd.u, hd.v, __int_as_float( hd.triid + (hd.triid == -1 ? 0 : (hd.instid << 20)) ), hd.t );
+		pathStateData[jobIndex].eye_intersection = hitData;
 
-        const int prim = __float_as_int(hitData.z);
-        const int primIdx = prim == -1 ? prim : (prim & 0xfffff);
+		pathStateData[jobIndex].data7.w = __int_as_float( -1 );
+	}
 
-        light_hit = primIdx;
-    }
+	int light_hit = -1;
+	int light_hit_idx = __float_as_int( pathStateData[jobIndex].data3.w );
+	float light_pdf_test = pathStateData[jobIndex].data2.w;
+	if (light_pdf_test < EPSILON || isnan( light_pdf_test ))
+	{
+		light_hit = -1;
+		pathStateData[jobIndex].data3.w = __int_as_float( -1 );
+	}
+	else if (light_hit_idx > -1)
+	{
+		const Intersection hd = randomWalkHitBuffer[light_hit_idx];
+		light_hit = hd.triid;
+		const float4 hitData = make_float4( hd.u, hd.v, __int_as_float( hd.triid + (hd.triid == -1 ? 0 : (hd.instid << 20)) ), hd.t );
 
-    int idxPixel = -1;
-    if (eye_hit != -1 && s+t < MAX_EYEPATH)
-    {
-        type = EXTEND_EYEPATH;
-        const uint eyePIdx = atomicAdd(&counters->extendEyePath, 1);
-        eyePathBuffer[eyePIdx] = jobIndex;
-    }
-    else if (light_hit != -1 && t < MAX_LIGHTPATH)
-    {
-        type = EXTEND_LIGHTPATH;
+		pathStateData[jobIndex].light_intersection = hitData;
+		pathStateData[jobIndex].data3.w = __int_as_float( -1 );
+	}
+	else
+	{
+		const float4 hitData = pathStateData[jobIndex].light_intersection;
 
-        const uint eyeIdx = atomicAdd(&counters->constructionEyePos, 1);
-        constructEyeBuffer[eyeIdx] = jobIndex;
+		const int prim = __float_as_int( hitData.z );
+		const int primIdx = prim == -1 ? prim : (prim & 0xfffff);
 
-        const uint lightPIdx = atomicAdd(&counters->extendLightPath, 1);
-    }
-    else
-    {
-        //const uint constructLight = atomicAdd(&counters->constructionLightPos, 1);
-        //constructLightBuffer[constructLight] = jobIndex;
+		light_hit = primIdx;
+	}
 
-        idxPixel = 1;
-        type = EXTEND_EYEPATH; // temporary mark, later it should be DEAD
-    }
-
-    if (eye_hit == -1 && type == EXTEND_EYEPATH)
+    if (eye_hit == -1 && type < EXTEND_LIGHTPATH)
     {
         if (!(eye_pdf < EPSILON || isnan(eye_pdf)))
         {
@@ -140,36 +115,57 @@ void connectionPathKernel(int smcount, BiPathState* pathStateData,
             FIXNAN_FLOAT3(contribution);
 
             float dE = pathStateData[jobIndex].data4.w;
-            misWeight = 1.0f;// / NKK;// / (dE * (1.0f / (SCENE_AREA)) + NKK);
+            misWeight = 1.0f  / (dE * (1.0f / (SCENE_AREA)) + NKK);
+            
+            if (type == NEW_PATH)
+            {
+                misWeight = 1.0f;
+            }
+            
 
             accumulatorOnePass[contribIdx] += make_float4((contribution * misWeight), 0.0f);
         }
     }
 
-    if (idxPixel != -1)
-    {
-        type = DEAD;
-    }
+	if (eye_hit != -1 && s + t < MAX_EYEPATH)
+	{
+		type = EXTEND_EYEPATH;
+		const uint eyePIdx = atomicAdd( &counters->extendEyePath, 1 );
+		eyePathBuffer[eyePIdx] = jobIndex;
+	}
+	else if (light_hit != -1 && t < MAX_LIGHTPATH)
+	{
+		type = EXTEND_LIGHTPATH;
 
-    path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
-    pathStateData[jobIndex].eye_normal.w = __uint_as_float(path_s_t_type_pass);
+		const uint eyeIdx = atomicAdd( &counters->constructionEyePos, 1 );
+		constructEyeBuffer[eyeIdx] = jobIndex;
+
+		const uint lightPIdx = atomicAdd( &counters->extendLightPath, 1 );
+	}
+	else
+	{
+		type = DEAD;
+	}
+
+	path_s_t_type_pass = (s << 27) + (t << 22) + (type << 19) + pass;
+	pathStateData[jobIndex].eye_normal.w = __uint_as_float( path_s_t_type_pass );
 }
 
 //  +-----------------------------------------------------------------------------+
 //  |  constructionLightPos                                                            |
 //  |  Entry point for the persistent constructionLightPos kernel.               LH2'19|
 //  +-----------------------------------------------------------------------------+
-__host__ void connectionPath(int smcount, 
-    BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
-    float4* accumulatorOnePass,
-    const int4 screenParams,
-    uint* constructEyeBuffer, uint* eyePathBuffer)
+__host__ void connectionPath( int smcount,
+	BiPathState* pathStateData, const Intersection* randomWalkHitBuffer,
+	float4* accumulatorOnePass,
+	const int4 screenParams,
+	uint* constructEyeBuffer, uint* eyePathBuffer )
 {
-	const dim3 gridDim( NEXTMULTIPLEOF(smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
-    connectionPathKernel << < gridDim.x, 256 >> > (smcount,
-        pathStateData, randomWalkHitBuffer, accumulatorOnePass, 
-        screenParams,
-        constructEyeBuffer, eyePathBuffer);
+	const dim3 gridDim( NEXTMULTIPLEOF( smcount, 256 ) / 256, 1 ), blockDim( 256, 1 );
+	connectionPathKernel << < gridDim.x, 256 >> > (smcount,
+		pathStateData, randomWalkHitBuffer, accumulatorOnePass,
+		screenParams,
+		constructEyeBuffer, eyePathBuffer);
 }
 
 // EOF
