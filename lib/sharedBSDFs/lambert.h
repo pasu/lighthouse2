@@ -20,6 +20,12 @@
 
 LH2_DEVFUNC float Fr_L( float VDotN, float eio )
 {
+    if (VDotN < 0.0f)
+    {
+        eio = 1.0f / eio;
+        VDotN = fabs(VDotN);
+    }
+
 	const float SinThetaT2 = sqr( eio ) * (1.0f - VDotN * VDotN);
 	if (SinThetaT2 > 1.0f) return 1.0f; // TIR
 	const float LDotN = sqrtf( 1.0f - SinThetaT2 );
@@ -43,7 +49,7 @@ LH2_DEVFUNC float3 EvaluateBSDF( const ShadingData shadingData, const float3 iN,
 	const float3 wo, const float3 wi, REFERENCE_OF( float ) pdf )
 {
 	pdf = fabs( dot( wi, iN ) ) * INVPI;
-	return shadingData.color * INVPI * ROUGHNESS;
+	return shadingData.color * INVPI * 1.0f;
 }
 
 LH2_DEVFUNC float3 SampleBSDF( const ShadingData shadingData, float3 iN, const float3 N, const float3 T, const float3 wo,
