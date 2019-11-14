@@ -49,7 +49,7 @@ LH2_DEVFUNC float3 EvaluateBSDF( const ShadingData shadingData, const float3 iN,
 	const float3 wo, const float3 wi, REFERENCE_OF( float ) pdf )
 {
 	pdf = fabs( dot( wi, iN ) ) * INVPI;
-	return shadingData.color * INVPI * 1.0f;
+	return shadingData.color * INVPI * ROUGHNESS;
 }
 
 LH2_DEVFUNC float3 SampleBSDF( const ShadingData shadingData, float3 iN, const float3 N, const float3 T, const float3 wo,
